@@ -16,7 +16,10 @@ connectDB();
 const app = express();
 app.use(cors());
 app.use(express.json());
-
+app.use(cors({
+    origin: "https://homepge.vercel.app/", // replace with your real frontend domain
+    credentials: true
+  }));
 app.use('/api/deals', dealRoutes);
 app.use('/api/stores', storeRoutes);
 app.use('/api/categories', categoryRoutes);
