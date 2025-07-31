@@ -75,10 +75,39 @@ export async function getStoreById(req, res) {
     }
   }
   
-
+  export async function searchStores(req, res) {
+    const searchTerm = req.query.q;
   
+    if (!searchTerm) {
+      return res.status(400).json({ message: 'Search term (q) is required' });
+    }
   
+    try {
+      // Create case-insensitive regex for "starts with"
+      const startsWithRegex = new RegExp('^' + searchTerm, 'i');
+      // Create case-insensitive regex for "contains"
+      const containsRegex = new RegExp(searchTerm, 'i');
   
+      // 1. Find stores where storeName starts with the searchTerm
+      const startsWithStores = await Store.find({ storeName: startsWithRegex }).lean(); // .lean() for plain JS objects
   
+      // Get IDs of stores found in "starts with" to exclude them from "contains" search
+      const startsWithIds = startsWithStores.map(store => store._id);
+  
+      // 2. Find stores where storeName contains the searchTerm, excluding those already found
+      const containsStores = await Store.find({
+        storeName: containsRegex,
+        _id: { $nin: startsWithIds } // Exclude stores already found
+      }).lean();
+  
+      // Combine results: startsWithStores first, then containsStores
+      const combinedStores = [...startsWithStores, ...containsStores];
+  
+      res.json(combinedStores);
+    } catch (err) {
+      console.error('Error during store search:', err);
+      res.status(500).json({ message: err.message });
+    }
+  }
   
   

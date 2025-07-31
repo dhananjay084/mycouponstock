@@ -97,3 +97,38 @@ export async function updateDeal(req, res) {
     res.status(500).json({ message: err.message });
   }
 }
+
+export async function searchDeals(req, res) {
+    const searchTerm = req.query.q;
+  
+    if (!searchTerm) {
+      return res.status(400).json({ message: 'Search term (q) is required' });
+    }
+  
+    try {
+      // Create case-insensitive regex for "starts with"
+      const startsWithRegex = new RegExp('^' + searchTerm, 'i');
+      // Create case-insensitive regex for "contains"
+      const containsRegex = new RegExp(searchTerm, 'i');
+  
+      // 1. Find deals where dealTitle starts with the searchTerm
+      const startsWithDeals = await Deal.find({ dealTitle: startsWithRegex }).lean(); // .lean() for plain JS objects
+  
+      // Get IDs of deals found in "starts with" to exclude them from "contains" search
+      const startsWithIds = startsWithDeals.map(deal => deal._id);
+  
+      // 2. Find deals where dealTitle contains the searchTerm, excluding those already found
+      const containsDeals = await Deal.find({
+        dealTitle: containsRegex,
+        _id: { $nin: startsWithIds } // Exclude deals already found
+      }).lean();
+  
+      // Combine results: startsWithDeals first, then containsDeals
+      const combinedDeals = [...startsWithDeals, ...containsDeals];
+  
+      res.json(combinedDeals);
+    } catch (err) {
+      console.error('Error during deal search:', err);
+      res.status(500).json({ message: err.message });
+    }
+  }

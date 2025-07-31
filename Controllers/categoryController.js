@@ -44,3 +44,37 @@ export const deleteCategory = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+export const searchCategories = async (req, res) => {
+    const searchTerm = req.query.q;
+  
+    if (!searchTerm) {
+      return res.status(400).json({ message: 'Search term (q) is required' });
+    }
+  
+    try {
+      // Create case-insensitive regex for "starts with"
+      const startsWithRegex = new RegExp('^' + searchTerm, 'i');
+      // Create case-insensitive regex for "contains"
+      const containsRegex = new RegExp(searchTerm, 'i');
+  
+      // 1. Find categories where name starts with the searchTerm
+      const startsWithCategories = await Category.find({ name: startsWithRegex }).lean(); // .lean() for plain JS objects
+  
+      // Get IDs of categories found in "starts with" to exclude them from "contains" search
+      const startsWithIds = startsWithCategories.map(cat => cat._id);
+  
+      // 2. Find categories where name contains the searchTerm, excluding those already found
+      const containsCategories = await Category.find({
+        name: containsRegex,
+        _id: { $nin: startsWithIds } // Exclude categories already found
+      }).lean();
+  
+      // Combine results: startsWithCategories first, then containsCategories
+      const combinedCategories = [...startsWithCategories, ...containsCategories];
+  
+      res.json(combinedCategories);
+    } catch (err) {
+      console.error('Error during category search:', err);
+      res.status(500).json({ message: err.message });
+    }
+  };
