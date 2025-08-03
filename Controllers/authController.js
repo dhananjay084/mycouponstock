@@ -25,7 +25,8 @@ const setAuthCookies = (res, accessToken, refreshToken) => {
     httpOnly: true, // Prevents client-side JavaScript from accessing the cookie
     secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
     sameSite: 'Lax', // Protects against CSRF attacks
-    maxAge: 15 * 60 * 1000 // Access token cookie expires in 15 minutes
+    maxAge: 15 * 60 * 1000, // Access token cookie expires in 15 minutes
+    path: '/' // Explicitly set path for consistency
   });
 
   // Refresh Token Cookie (long-lived)
@@ -33,7 +34,8 @@ const setAuthCookies = (res, accessToken, refreshToken) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'Lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000 // Refresh token cookie expires in 7 days
+    maxAge: 7 * 24 * 60 * 60 * 1000, // Refresh token cookie expires in 7 days
+    path: '/' // Explicitly set path for consistency
   });
 };
 
@@ -130,7 +132,11 @@ export const googleAuthCallback = async (req, res) => {
 
     setAuthCookies(res, accessToken, refreshToken);
 
-    res.redirect(`${process.env.CLIENT_URL}/dashboard?name=${encodeURIComponent(user.name || user.email)}`);
+    // Redirect to client with user name and email for client-side cookie storage
+    // Ensure name and email are URL-encoded to handle special characters
+    const userName = encodeURIComponent(user.name || '');
+    const userEmail = encodeURIComponent(user.email || '');
+    res.redirect(`${process.env.CLIENT_URL}/login?name=${userName}&email=${userEmail}`);
   } else {
     res.redirect(`${process.env.CLIENT_URL}/login?error=google_auth_failed`);
   }
@@ -152,8 +158,8 @@ export const refreshAccessToken = async (req, res) => {
     });
 
     if (!user || !user.matchRefreshToken(incomingRefreshToken)) {
-      res.clearCookie('accessToken');
-      res.clearCookie('refreshToken');
+      res.clearCookie('accessToken', { path: '/' }); // Explicitly clear with path
+      res.clearCookie('refreshToken', { path: '/' }); // Explicitly clear with path
       return res.status(403).json({ message: 'Invalid refresh token. Please log in again.' });
     }
 
@@ -189,8 +195,9 @@ export const logout = async (req, res) => {
       await user.save({ validateBeforeSave: false });
     }
 
-    res.clearCookie('accessToken');
-    res.clearCookie('refreshToken');
+    // Explicitly clear cookies with the same path as they were set
+    res.clearCookie('accessToken', { path: '/' });
+    res.clearCookie('refreshToken', { path: '/' });
     res.status(200).json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Logout error:', error);
@@ -226,6 +233,3 @@ export const getCurrentUser = (req, res) => {
     res.status(200).json({ user: null, message: 'Invalid or expired access token.' });
   }
 };
-
-// Removed: protect, authorizeAdmin, checkSpecificAdmin middlewares
-// As per user's request, these backend authentication/authorization checks are removed.

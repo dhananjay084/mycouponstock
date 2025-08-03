@@ -13,6 +13,7 @@ import adminRoutes from './Routes/homeAdminRoutes.js';
 import passport from 'passport';
 import session from 'express-session'; // Using express-session for session management
 import cookieParser from 'cookie-parser'; // To parse cookies from incoming requests
+import contactRoutes from './Routes/contactRoute.js'
 
 // Load environment variables from .env file
 dotenv.config();
@@ -25,7 +26,7 @@ const app = express();
 // Middleware
 // Configure CORS to allow requests from your frontend development server
 app.use(cors({
-  origin: process.env.CLIENT_URL, // Ensure this matches your frontend URL exactly (e.g., http://localhost:5173)
+  origin: process.env.CLIENT_URL, // Ensure this matches your frontend URL exactly (e.g., https://homepge.vercel.app/)
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   credentials: true, // IMPORTANT: Allows sending HTTP-only cookies from the client
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -76,10 +77,10 @@ app.use("/api", subscriberRoutes);
 app.use('/api/reviews', viewRoutes);
 app.use("/api/blogs", blogRoutes);
 app.use("/api/admin", adminRoutes); // Your existing admin routes
-
+app.use("/api/contacts", contactRoutes);
 // --- TEST ROUTE (for debugging server reachability) ---
 // This route is specifically for you to check if your backend server is running and accessible.
-// You can open your browser and go to http://localhost:5000/test (or your configured PORT/test).
+// You can open your browser and go to mycouponstock-production.up.railway.app/test (or your configured PORT/test).
 app.get('/test', (req, res) => {
   res.send('Backend server is running!');
 });
