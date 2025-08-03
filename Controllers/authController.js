@@ -178,32 +178,46 @@ export const refreshAccessToken = async (req, res) => {
 // @route   POST /api/auth/logout
 // @access  Public (no backend authentication check, clears cookies and DB refresh token)
 export const logout = async (req, res) => {
-  const incomingRefreshToken = req.cookies.refreshToken;
-
-  if (!incomingRefreshToken) {
-    return res.status(200).json({ message: 'Already logged out or no active session' });
-  }
-
-  try {
-    const user = await User.findOne({
-      refreshToken: crypto.createHash('sha256').update(incomingRefreshToken).digest('hex')
-    });
-
-    if (user) {
-      user.refreshToken = undefined;
-      await user.save({ validateBeforeSave: false });
+    const incomingRefreshToken = req.cookies.refreshToken;
+  
+    if (!incomingRefreshToken) {
+      return res.status(200).json({ message: 'Already logged out or no active session' });
     }
-
-    // Explicitly clear cookies with the same path as they were set
-    res.clearCookie('accessToken', { path: '/' });
-    res.clearCookie('refreshToken', { path: '/' });
-    res.status(200).json({ message: 'Logged out successfully' });
-  } catch (error) {
-    console.error('Logout error:', error);
-    res.status(500).json({ message: 'Server error during logout' });
-  }
-};
-
+  
+    try {
+      const user = await User.findOne({
+        refreshToken: crypto.createHash('sha256').update(incomingRefreshToken).digest('hex')
+      });
+  
+      if (user) {
+        user.refreshToken = undefined;
+        await user.save({ validateBeforeSave: false });
+      }
+  
+      const isProd = process.env.NODE_ENV === 'production';
+  
+      // Must match the same options as when setting
+      res.clearCookie('accessToken', {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? 'None' : 'Lax',
+        path: '/',
+      });
+  
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? 'None' : 'Lax',
+        path: '/',
+      });
+  
+      res.status(200).json({ message: 'Logged out successfully' });
+    } catch (error) {
+      console.error('Logout error:', error);
+      res.status(500).json({ message: 'Server error during logout' });
+    }
+  };
+  
 // @desc    Get current user details (WARNING: Now public, no auth check)
 // @route   GET /api/auth/current_user
 // @access  Public (no backend authentication check)
