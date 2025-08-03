@@ -17,25 +17,24 @@ const generateAndStoreRefreshToken = async (user) => {
   await user.save({ validateBeforeSave: false }); // Save user with new hashed refresh token
   return refreshToken; // Return the unhashed token to be sent to the client
 };
-
+const isProd = process.env.NODE_ENV === 'production';
 // Helper to set HTTP-only cookies
 const setAuthCookies = (res, accessToken, refreshToken) => {
   // Access Token Cookie (short-lived)
   res.cookie('accessToken', accessToken, {
-    httpOnly: true, // Prevents client-side JavaScript from accessing the cookie
-    secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
-    sameSite: 'Lax', // Protects against CSRF attacks
-    maxAge: 15 * 60 * 1000, // Access token cookie expires in 15 minutes
-    path: '/' // Explicitly set path for consistency
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'None' : 'Lax',
+    maxAge: 15 * 60 * 1000,
+    path: '/',
   });
-
-  // Refresh Token Cookie (long-lived)
+  
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // Refresh token cookie expires in 7 days
-    path: '/' // Explicitly set path for consistency
+    secure: isProd,
+    sameSite: isProd ? 'None' : 'Lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: '/',
   });
 };
 
