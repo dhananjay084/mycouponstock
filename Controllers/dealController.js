@@ -10,62 +10,65 @@ export async function getDeals(req, res) {
 }
 
 export async function createDeal(req, res) {
-    const {
+  const {
+    dealTitle,
+    dealDescription,
+    dealImage,
+    homePageTitle,
+    showOnHomepage,
+    dealType,
+    dealCategory,
+    details,
+    discount,
+    categorySelect,
+    couponCode,
+    store,
+    expiredDate,
+    redirectionLink // <-- NEW FIELD
+  } = req.body;
+
+  if (
+    !dealTitle ||
+    !dealDescription ||
+    !dealImage ||
+    !homePageTitle ||
+    !dealType ||
+    !dealCategory ||
+    !details ||
+    !categorySelect ||
+    !store ||
+    !couponCode ||
+    !discount ||
+    !expiredDate ||
+    !redirectionLink // <-- VALIDATION
+  ) {
+    return res.status(400).json({ message: 'All required fields must be filled' });
+  }
+
+  try {
+    const newDeal = new Deal({
       dealTitle,
       dealDescription,
       dealImage,
       homePageTitle,
-      showOnHomepage,
+      showOnHomepage: showOnHomepage || false,
       dealType,
       dealCategory,
       details,
-      discount,
       categorySelect,
       couponCode,
+      discount,
       store,
-      expiredDate, // <-- NEW FIELD
-    } = req.body;
-  
-    if (
-      !dealTitle ||
-      !dealDescription ||
-      !dealImage ||
-      !homePageTitle ||
-      !dealType ||
-      !dealCategory ||
-      !details ||
-      !categorySelect ||
-      !store ||
-      !couponCode ||
-      !discount ||
-      !expiredDate // <-- NEW VALIDATION
-    ) {
-      return res.status(400).json({ message: 'All required fields must be filled' });
-    }
-  
-    try {
-      const newDeal = new Deal({
-        dealTitle,
-        dealDescription,
-        dealImage,
-        homePageTitle,
-        showOnHomepage: showOnHomepage || false,
-        dealType,
-        dealCategory,
-        details,
-        categorySelect,
-        couponCode,
-        discount,
-        store,
-        expiredDate, // <-- STORE NEW FIELD
-      });
-  
-      const savedDeal = await newDeal.save();
-      res.status(201).json(savedDeal);
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
+      expiredDate,
+      redirectionLink // <-- SAVE NEW FIELD
+    });
+
+    const savedDeal = await newDeal.save();
+    res.status(201).json(savedDeal);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
+}
   
   
   export async function getDealById(req, res) {

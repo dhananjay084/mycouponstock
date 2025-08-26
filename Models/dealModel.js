@@ -54,6 +54,8 @@ const dealSchema = new Schema({
     type: String,
     required: true,
   },
+  redirectionLink: { type: String, required: true } 
+
 }, {
   timestamps: true
 });

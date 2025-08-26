@@ -26,7 +26,7 @@ const app = express();
 // Middleware
 // Configure CORS to allow requests from your frontend development server
 app.use(cors({
-  origin: process.env.CLIENT_URL, // Ensure this matches your frontend URL exactly (e.g., https://homepge.vercel.app)
+  origin: process.env.CLIENT_URL, // Ensure this matches your frontend URL exactly (e.g., http://localhost:5173)
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   credentials: true, // IMPORTANT: Allows sending HTTP-only cookies from the client
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -80,7 +80,7 @@ app.use("/api/admin", adminRoutes); // Your existing admin routes
 app.use("/api/contacts", contactRoutes);
 // --- TEST ROUTE (for debugging server reachability) ---
 // This route is specifically for you to check if your backend server is running and accessible.
-// You can open your browser and go to https://mycouponstock-production.up.railway.app/test (or your configured PORT/test).
+// You can open your browser and go to http://localhost:5000/test (or your configured PORT/test).
 app.get('/test', (req, res) => {
   res.send('Backend server is running!');
 });
