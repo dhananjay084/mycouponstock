@@ -17,18 +17,18 @@ const generateAndStoreRefreshToken = async (user) => {
   await user.save({ validateBeforeSave: false }); // Save user with new hashed refresh token
   return refreshToken; // Return the unhashed token to be sent to the client
 };
-const isProd = process.env.NODE_ENV === 'production';
 // Helper to set HTTP-only cookies
 const setAuthCookies = (res, accessToken, refreshToken) => {
-  // Access Token Cookie (short-lived)
+  const isProd = process.env.NODE_ENV === 'production';
+
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? 'None' : 'Lax',
+    secure: isProd,                   // Only secure in production
+    sameSite: isProd ? 'None' : 'Lax', // 'Lax' for local development
     maxAge: 15 * 60 * 1000,
     path: '/',
   });
-  
+
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
     secure: isProd,
@@ -37,6 +37,7 @@ const setAuthCookies = (res, accessToken, refreshToken) => {
     path: '/',
   });
 };
+
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
