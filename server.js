@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import bodyParser from "body-parser";
 
+
 // Load environment variables
 dotenv.config();
 
@@ -56,6 +57,7 @@ import blogRoutes from './Routes/blogRoutes.js';
 import adminRoutes from './Routes/homeAdminRoutes.js';
 import contactRoutes from './Routes/contactRoute.js';
 import paymentRoutes from './Routes/paymentRoutes.js';
+import countryRoutes from './Routes/countryRoutes.js'
 app.use('/api/auth', authRoutes);
 app.use('/api/deals', dealRoutes);
 app.use('/api/stores', storeRoutes);
@@ -66,6 +68,7 @@ app.use('/api/blogs', blogRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use("/api/countries", countryRoutes);
 
 // Health check route
 app.get('/test', (req, res) => {

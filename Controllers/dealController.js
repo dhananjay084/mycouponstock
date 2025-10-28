@@ -24,7 +24,8 @@ export async function createDeal(req, res) {
     couponCode,
     store,
     expiredDate,
-    redirectionLink // <-- NEW FIELD
+    redirectionLink,
+    country // ✅ ADD THIS
   } = req.body;
 
   if (
@@ -40,7 +41,8 @@ export async function createDeal(req, res) {
     !couponCode ||
     !discount ||
     !expiredDate ||
-    !redirectionLink // <-- VALIDATION
+    !redirectionLink ||
+    !country // ✅ ADD THIS TO VALIDATION
   ) {
     return res.status(400).json({ message: 'All required fields must be filled' });
   }
@@ -60,7 +62,8 @@ export async function createDeal(req, res) {
       discount,
       store,
       expiredDate,
-      redirectionLink // <-- SAVE NEW FIELD
+      redirectionLink,
+      country // ✅ ADD THIS WHEN SAVING
     });
 
     const savedDeal = await newDeal.save();
@@ -69,6 +72,7 @@ export async function createDeal(req, res) {
     res.status(500).json({ message: err.message });
   }
 }
+
   
   
   export async function getDealById(req, res) {

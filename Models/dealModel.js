@@ -54,6 +54,10 @@ const dealSchema = new Schema({
     type: String,
     required: true,
   },
+  country: {
+    type: [String], // can store multiple countries
+    required: true,
+  },
   redirectionLink: { type: String, required: true } 
 
 }, {
