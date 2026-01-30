@@ -1,10 +1,20 @@
 import { Schema, model } from 'mongoose';
+import slugify from 'slugify';
 
 const storeSchema = new Schema({
   storeName: {
     type: String,
     required: true,
   },
+
+  slug: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    index: true,
+  },
+
   storeDescription: {
     type: String,
     required: true,
@@ -22,7 +32,7 @@ const storeSchema = new Schema({
     default: false,
   },
   storeType: {
-    type: String, // dynamic values allowed
+    type: String,
     required: true,
   },
   discountPercentage: {
@@ -39,6 +49,17 @@ const storeSchema = new Schema({
   }
 }, {
   timestamps: true,
+});
+
+storeSchema.pre('validate', function (next) {
+  if (this.storeName && !this.slug) {
+    this.slug = slugify(this.storeName, {
+      lower: true,
+      strict: true,
+      trim: true,
+    });
+  }
+  next();
 });
 
 export default model('Store', storeSchema);

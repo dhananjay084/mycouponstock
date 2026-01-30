@@ -121,22 +121,29 @@ export const login = async (req, res) => {
 // @route   GET /api/auth/google/callback
 // @access  Public (no backend authentication check beyond Passport's initial auth)
 export const googleAuthCallback = async (req, res) => {
+  console.log('Google OAuth callback hit');
   try {
     if (req.user) {
+      console.log('req.user:', req.user);
       const user = await User.findById(req.user._id);
+      console.log('Found user:', user);
       if (!user) {
+        console.log('User not found, redirecting to login with error');
         return res.redirect(`${process.env.CLIENT_URL}/login?error=google_auth_failed`);
       }
 
       const accessToken = generateAccessToken(user._id, user.role);
       const refreshToken = await generateAndStoreRefreshToken(user);
+      console.log('Generated tokens');
 
       setAuthCookies(res, accessToken, refreshToken);
+      console.log('Cookies set');
 
       const userName = encodeURIComponent(user.name || '');
       const userEmail = encodeURIComponent(user.email || '');
       return res.redirect(`${process.env.CLIENT_URL}/login?name=${userName}&email=${userEmail}`);
     } else {
+      console.log('No req.user, redirecting to login with error');
       return res.redirect(`${process.env.CLIENT_URL}/login?error=google_auth_failed`);
     }
   } catch (error) {
@@ -144,6 +151,7 @@ export const googleAuthCallback = async (req, res) => {
     return res.status(500).json({ message: 'Internal server error during Google login' });
   }
 };
+
 
 
 // @desc    Refresh Access Token
@@ -251,3 +259,5 @@ export const getCurrentUser = (req, res) => {
     res.status(200).json({ user: null, message: 'Invalid or expired access token.' });
   }
 };
+export { generateAndStoreRefreshToken };
+export {setAuthCookies};

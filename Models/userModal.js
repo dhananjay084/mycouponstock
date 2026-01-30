@@ -1,71 +1,71 @@
-// backend/models/User.js
+// backend/Models/userModal.js (same file as before)
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs'; // For password hashing
-import crypto from 'crypto'; // For generating refresh tokens
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const UserSchema = new mongoose.Schema({
   email: {
     type: String,
-    required: function() { return !this.googleId; },
+    required: function () { return !this.googleId; },
     unique: true,
-    sparse: true // Allows multiple null values for email if googleId is present
+    sparse: true
   },
   password: {
     type: String,
-    required: function() { return !this.googleId; }
+    required: function () { return !this.googleId; }
   },
   googleId: {
     type: String,
     unique: true,
-    sparse: true // Allows multiple null values for googleId
+    sparse: true
   },
-  name: {
-    type: String,
-    required: false
-  },
-  // New: Field to store the hashed refresh token
-  refreshToken: {
-    type: String,
-    required: false // Not required initially, generated on login
-  },
-  // New: Role for access control (e.g., 'user', 'admin')
+  name: { type: String },
+  refreshToken: { type: String },
   role: {
     type: String,
-    enum: ['user', 'admin'], // Only allow 'user' or 'admin'
-    default: 'user' // Default role is 'user'
+    enum: ['user', 'admin'],
+    default: 'user'
   },
-  createdAt: {
-    type: Date,
-    default: Date.now
+  createdAt: { type: Date, default: Date.now },
+
+  referralCode: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
+  referredBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
   }
+  
 });
 
-// Pre-save hook to hash the password before saving a new user or updating password
-UserSchema.pre('save', async function(next) {
-  // Only hash the password if it's new or has been modified and is not null/undefined
+// Generate referral code before save if not set
+UserSchema.pre('save', async function (next) {
+  if (!this.referralCode) {
+    this.referralCode = crypto.randomBytes(4).toString('hex');
+  }
+
+  // Hash password if modified
   if (this.isModified('password') && this.password) {
-    const salt = await bcrypt.genSalt(10); // Generate a salt
-    this.password = await bcrypt.hash(this.password, salt); // Hash the password
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
   }
-  next(); // Continue with the save operation
+  next();
 });
 
-// Method to compare entered password with hashed password in the database
-UserSchema.methods.matchPassword = async function(enteredPassword) {
-  // Use bcrypt to compare the plain text password with the hashed password
+UserSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Method to generate and hash a refresh token
-UserSchema.methods.getSignedRefreshToken = function() {
-  const refreshToken = crypto.randomBytes(64).toString('hex'); // Generate a random string
-  // Hash the refresh token before saving it to the database
+UserSchema.methods.getSignedRefreshToken = function () {
+  const refreshToken = crypto.randomBytes(64).toString('hex');
   this.refreshToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
-  return refreshToken; // Return the unhashed token to the user (to be sent via cookie)
+  return refreshToken;
 };
 
-// Method to compare a provided refresh token (from cookie) with the hashed one in the database
-UserSchema.methods.matchRefreshToken = function(providedToken) {
+UserSchema.methods.matchRefreshToken = function (providedToken) {
   if (!providedToken || !this.refreshToken) return false;
   const hashedProvidedToken = crypto.createHash('sha256').update(providedToken).digest('hex');
   return hashedProvidedToken === this.refreshToken;

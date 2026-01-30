@@ -1,4 +1,5 @@
 import Store from '../Models/storeModel.js';
+import slugify from "slugify";
 
 export async function getStores(req, res) {
   try {
@@ -27,16 +28,27 @@ export async function createStore(req, res) {
   }
 
   try {
+    const slug = slugify(storeName, {
+      lower: true,
+      strict: true,
+    });
+
+    const existingSlug = await Store.findOne({ slug });
+    if (existingSlug) {
+      return res.status(400).json({ message: "Store with this name already exists" });
+    }
+
     const newStore = new Store({
-        storeName,
-        storeDescription,
-        storeImage,
-        homePageTitle,
-        showOnHomepage,
-        storeType,
-        discountPercentage,
-        popularStore,
-        storeHtmlContent,
+      storeName,
+      slug,
+      storeDescription,
+      storeImage,
+      homePageTitle,
+      showOnHomepage,
+      storeType,
+      discountPercentage,
+      popularStore,
+      storeHtmlContent,
     });
 
     const saved = await newStore.save();
@@ -46,15 +58,42 @@ export async function createStore(req, res) {
   }
 }
 
+
 export async function updateStore(req, res) {
   try {
-    const updated = await Store.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (req.body.storeName) {
+      const slug = slugify(req.body.storeName, {
+        lower: true,
+        strict: true,
+      });
+
+      const existing = await Store.findOne({
+        slug,
+        _id: { $ne: req.params.id }
+      });
+
+      if (existing) {
+        return res.status(400).json({ message: "Store slug already exists" });
+      }
+
+      req.body.slug = slug;
+    }
+
+    const updated = await Store.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
     if (!updated) return res.status(404).json({ message: 'Store not found' });
+
     res.json(updated);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 }
+
+
 
 export async function deleteStore(req, res) {
   try {
@@ -109,5 +148,19 @@ export async function getStoreById(req, res) {
       res.status(500).json({ message: err.message });
     }
   }
+  export async function getStoreBySlug(req, res) {
+    try {
+      const store = await Store.findOne({ slug: req.params.slug });
+  
+      if (!store) {
+        return res.status(404).json({ message: 'Store not found' });
+      }
+  
+      res.json(store);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+  
   
   
