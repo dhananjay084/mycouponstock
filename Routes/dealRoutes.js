@@ -8,6 +8,7 @@ import {
   createDeal,
   deleteDeal,
   updateDeal,
+  getDealBySlug,
   searchDeals // Import the new searchDeals function
 } from '../Controllers/dealController.js'; // Ensure path is correct (Controllers -> controllers)
 
@@ -16,6 +17,7 @@ router.get('/search', searchDeals);
 
 router.get('/', getDeals);
 router.get('/:id', getDealById);
+router.get('/slug/:slug', getDealBySlug);
 
 // router.post('/', createDeal);
 // router.delete('/:id', deleteDeal);

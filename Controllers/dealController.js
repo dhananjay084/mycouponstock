@@ -1,4 +1,5 @@
 import Deal from '../Models/dealModel.js';
+import slugify from 'slugify';
 
 export async function getDeals(req, res) {
   try {
@@ -8,7 +9,28 @@ export async function getDeals(req, res) {
     res.status(500).json({ message: err.message });
   }
 }
-
+async function generateUniqueSlug(title) {
+  let baseSlug = slugify(title, {
+    lower: true,
+    strict: true,
+    trim: true
+  });
+  
+  let slug = baseSlug;
+  let counter = 1;
+  
+  // Check if slug exists and make it unique
+  while (true) {
+    const existingDeal = await Deal.findOne({ slug });
+    if (!existingDeal) {
+      break;
+    }
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+  
+  return slug;
+}
 export async function createDeal(req, res) {
   const {
     dealTitle,
@@ -48,8 +70,11 @@ export async function createDeal(req, res) {
   }
 
   try {
+    const slug = await generateUniqueSlug(dealTitle);
+
     const newDeal = new Deal({
       dealTitle,
+      slug,
       dealDescription,
       dealImage,
       homePageTitle,
@@ -97,9 +122,21 @@ export async function deleteDeal(req, res) {
 
 export async function updateDeal(req, res) {
   try {
+    if (req.body.dealTitle) {
+      req.body.slug = await generateUniqueSlug(req.body.dealTitle);
+    }
     const updated = await Deal.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!updated) return res.status(404).json({ message: 'Deal not found' });
     res.json(updated);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+export async function getDealBySlug(req, res) {
+  try {
+    const deal = await Deal.findOne({ slug: req.params.slug });
+    if (!deal) return res.status(404).json({ message: 'Deal not found' });
+    res.json(deal);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

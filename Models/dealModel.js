@@ -5,6 +5,11 @@ const dealSchema = new Schema({
     type: String,
     required: true,
   },
+  slug: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
   dealDescription: {
     type: String,
     required: true,
@@ -60,7 +65,9 @@ const dealSchema = new Schema({
   },
   redirectionLink: { type: String, required: true } 
 
-}, {
+}, 
+
+{
   timestamps: true
 });
 
