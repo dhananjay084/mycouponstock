@@ -16,8 +16,9 @@ import {
 router.get('/search', searchDeals);
 
 router.get('/', getDeals);
-router.get('/:id', getDealById);
 router.get('/slug/:slug', getDealBySlug);
+
+router.get('/:id', getDealById);
 
 // router.post('/', createDeal);
 // router.delete('/:id', deleteDeal);

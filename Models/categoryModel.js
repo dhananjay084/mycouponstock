@@ -13,6 +13,20 @@ const categorySchema = new Schema({
     type: Boolean,
     default: false,
   },
+  metaTitle: {
+    type: String,
+    default: "",
+  },
+
+  metaDescription: {
+    type: String,
+    default: "",
+  },
+
+  metaKeywords: {
+    type: String,
+    default: "",
+  },
   showOnHomepage: {
     type: Boolean,
     default: false,

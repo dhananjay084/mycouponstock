@@ -15,12 +15,15 @@ export async function createStore(req, res) {
     storeName,
     storeDescription,
     storeImage,
-    homePageTitle,
+    homePageTitle,  
     showOnHomepage,
     storeType,
     discountPercentage,
     popularStore,
     storeHtmlContent,
+    metaTitle,
+metaDescription,
+metaKeywords,
   } = req.body;
 
   if (!storeName || !storeDescription || !storeImage || !homePageTitle || !storeType || discountPercentage === undefined) {
@@ -49,6 +52,9 @@ export async function createStore(req, res) {
       discountPercentage,
       popularStore,
       storeHtmlContent,
+      metaTitle,
+metaDescription,
+metaKeywords,
     });
 
     const saved = await newStore.save();

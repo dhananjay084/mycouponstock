@@ -47,7 +47,10 @@ export async function createDeal(req, res) {
     store,
     expiredDate,
     redirectionLink,
-    country // ✅ ADD THIS
+    country, // ✅ ADD THIS
+    metaTitle,
+    metaDescription,
+    metaKeywords
   } = req.body;
 
   if (
@@ -88,7 +91,10 @@ export async function createDeal(req, res) {
       store,
       expiredDate,
       redirectionLink,
-      country // ✅ ADD THIS WHEN SAVING
+      country, // ✅ ADD THIS WHEN SAVING
+      metaTitle,
+      metaDescription,
+      metaKeywords
     });
 
     const savedDeal = await newDeal.save();

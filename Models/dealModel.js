@@ -10,6 +10,18 @@ const dealSchema = new Schema({
     unique: true,
     sparse: true,
   },
+  metaTitle: {
+    type: String,
+    default: "",
+  },
+  metaDescription: {
+    type: String,
+    default: "",
+  },
+  metaKeywords: {
+    type: String,
+    default: "",
+  },
   dealDescription: {
     type: String,
     required: true,

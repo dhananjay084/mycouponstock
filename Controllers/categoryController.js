@@ -10,14 +10,18 @@ export const getCategories = async (req, res) => {
 };
 
 export const createCategory = async (req, res) => {
-  const { name, image, popularStore, showOnHomepage } = req.body;
+  const { name, image, popularStore, showOnHomepage, metaTitle,
+    metaDescription,
+    metaKeywords } = req.body;
 
   if (!name || !image) {
     return res.status(400).json({ message: 'Name and image are required' });
   }
 
   try {
-    const newCategory = new Category({ name, image, popularStore, showOnHomepage });
+    const newCategory = new Category({ name, image, popularStore, showOnHomepage,  metaTitle,
+      metaDescription,
+      metaKeywords });
     const saved = await newCategory.save();
     res.status(201).json(saved);
   } catch (err) {
@@ -25,10 +29,27 @@ export const createCategory = async (req, res) => {
   }
 };
 
+// export const updateCategory = async (req, res) => {
+//   try {
+//     const updated = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
+//     if (!updated) return res.status(404).json({ message: 'Category not found' });
+//     res.json(updated);
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
 export const updateCategory = async (req, res) => {
   try {
-    const updated = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updateData = { ...req.body };
+
+    const updated = await Category.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    );
+
     if (!updated) return res.status(404).json({ message: 'Category not found' });
+
     res.json(updated);
   } catch (err) {
     res.status(500).json({ message: err.message });

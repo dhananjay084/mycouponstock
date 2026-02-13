@@ -39,6 +39,18 @@ const storeSchema = new Schema({
     type: Number,
     required: true,
   },
+  metaTitle: {
+    type: String,
+    default: "",
+  },
+  metaDescription: {
+    type: String,
+    default: "",
+  },
+  metaKeywords: {
+    type: String,
+    default: "",
+  },
   popularStore: {
     type: Boolean,
     default: false,
