@@ -3,7 +3,15 @@ import slugify from "slugify";
 
 export async function getStores(req, res) {
   try {
-    const stores = await Store.find();
+    const { country, countries } = req.query;
+    let query = {};
+    if (country) {
+      query.country = country;
+    } else if (countries) {
+      const list = countries.split(',').map((c) => c.trim()).filter(Boolean);
+      if (list.length > 0) query.country = { $in: list };
+    }
+    const stores = await Store.find(query);
     res.json(stores);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -21,12 +29,13 @@ export async function createStore(req, res) {
     discountPercentage,
     popularStore,
     storeHtmlContent,
+    country,
     metaTitle,
 metaDescription,
 metaKeywords,
   } = req.body;
 
-  if (!storeName || !storeDescription || !storeImage || !homePageTitle || !storeType || discountPercentage === undefined) {
+  if (!storeName || !storeDescription || !storeImage || !homePageTitle || !storeType || discountPercentage === undefined || !country) {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
@@ -52,6 +61,7 @@ metaKeywords,
       discountPercentage,
       popularStore,
       storeHtmlContent,
+      country,
       metaTitle,
 metaDescription,
 metaKeywords,
@@ -122,6 +132,7 @@ export async function getStoreById(req, res) {
   
   export async function searchStores(req, res) {
     const searchTerm = req.query.q;
+    const { country, countries } = req.query;
   
     if (!searchTerm) {
       return res.status(400).json({ message: 'Search term (q) is required' });
@@ -132,15 +143,23 @@ export async function getStoreById(req, res) {
       const startsWithRegex = new RegExp('^' + searchTerm, 'i');
       // Create case-insensitive regex for "contains"
       const containsRegex = new RegExp(searchTerm, 'i');
+      let countryFilter = {};
+      if (country) {
+        countryFilter = { country };
+      } else if (countries) {
+        const list = countries.split(',').map((c) => c.trim()).filter(Boolean);
+        if (list.length > 0) countryFilter = { country: { $in: list } };
+      }
   
       // 1. Find stores where storeName starts with the searchTerm
-      const startsWithStores = await Store.find({ storeName: startsWithRegex }).lean(); // .lean() for plain JS objects
+      const startsWithStores = await Store.find({ ...countryFilter, storeName: startsWithRegex }).lean(); // .lean() for plain JS objects
   
       // Get IDs of stores found in "starts with" to exclude them from "contains" search
       const startsWithIds = startsWithStores.map(store => store._id);
   
       // 2. Find stores where storeName contains the searchTerm, excluding those already found
       const containsStores = await Store.find({
+        ...countryFilter,
         storeName: containsRegex,
         _id: { $nin: startsWithIds } // Exclude stores already found
       }).lean();

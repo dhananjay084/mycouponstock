@@ -12,6 +12,11 @@ const faqSchema = new Schema({
 });
 
 const HomeAdminSchema = new Schema({
+  country: {
+    type: String,
+    required: true,
+    index: true,
+  },
   bannerDeals: {
     type: [Schema.Types.ObjectId],
     ref: 'Deal',

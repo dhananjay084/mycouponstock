@@ -58,7 +58,11 @@ const storeSchema = new Schema({
   storeHtmlContent: {
     type: String,
     default: '',
-  }
+  },
+  country: {
+    type: [String],
+    required: true,
+  },
 }, {
   timestamps: true,
 });
