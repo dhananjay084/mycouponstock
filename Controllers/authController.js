@@ -43,9 +43,9 @@ const setAuthCookies = (res, accessToken, refreshToken) => {
 // @route   POST /api/auth/register
 // @access  Public (no backend authentication check)
 export const register = async (req, res) => {
-  const { name, email, password, confirmPassword } = req.body;
+  const { name, email, phone, password, confirmPassword } = req.body;
 
-  if (!name || !email || !password || !confirmPassword) {
+  if (!name || !email || !phone || !password || !confirmPassword) {
     return res.status(400).json({ message: 'Please enter all fields' });
   }
   if (password !== confirmPassword) {
@@ -58,7 +58,7 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
-    const user = await User.create({ name, email, password, role: 'user' }); // Default role 'user'
+    const user = await User.create({ name, email, phone, password, role: 'user' }); // Default role 'user'
 
     if (user) {
       const accessToken = generateAccessToken(user._id, user.role);
@@ -70,6 +70,7 @@ export const register = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
         role: user.role,
         message: 'Registration successful. You are logged in.'
       });

@@ -20,6 +20,7 @@ const UserSchema = new mongoose.Schema({
     sparse: true
   },
   name: { type: String },
+  phone: { type: String },
   refreshToken: { type: String },
   role: {
     type: String,

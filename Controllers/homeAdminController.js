@@ -17,7 +17,12 @@ export async function createHomeAdmin(req, res) {
       }
   
       const newHomeAdmin = await HomeAdmin.create(req.body);
-      return res.status(201).json({ success: true, data: newHomeAdmin });
+      const populated = await HomeAdmin.findById(newHomeAdmin._id)
+        .populate('bannerDeals')
+        .populate('dealPageBannerDeals')
+        .populate('storePageBannerDeals')
+        .populate('categoryPageBannerDeals');
+      return res.status(201).json({ success: true, data: populated });
     } catch (err) {
       return res.status(400).json({ success: false, error: err.message });
     }
@@ -38,7 +43,11 @@ export async function createHomeAdmin(req, res) {
       const updated = await HomeAdmin.findByIdAndUpdate(id, req.body, {
         new: true,
         runValidators: true,
-      }).populate('bannerDeals');
+      })
+        .populate('bannerDeals')
+        .populate('dealPageBannerDeals')
+        .populate('storePageBannerDeals')
+        .populate('categoryPageBannerDeals');
   
       if (!updated) {
         return res.status(404).json({ success: false, error: 'Not found' });
@@ -58,7 +67,11 @@ export async function createHomeAdmin(req, res) {
         const escaped = country.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         query = { country: new RegExp(`^${escaped}$`, 'i') };
       }
-      const data = await HomeAdmin.find(query).populate('bannerDeals');
+      const data = await HomeAdmin.find(query)
+        .populate('bannerDeals')
+        .populate('dealPageBannerDeals')
+        .populate('storePageBannerDeals')
+        .populate('categoryPageBannerDeals');
       return res.status(200).json({ success: true, data });
     } catch (err) {
       return res.status(500).json({ success: false, error: err.message });

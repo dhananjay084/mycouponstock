@@ -21,17 +21,58 @@ const HomeAdminSchema = new Schema({
     type: [Schema.Types.ObjectId],
     ref: 'Deal',
     validate: {
-      validator: (arr) => arr.length === 3,
-      message: 'Exactly 3 deals must be selected.',
+      validator: (arr) => arr.length >= 6,
+      message: 'Select at least 6 deals.',
     },
     required: true,
+  },
+  dealPageBannerDeals: {
+    type: [Schema.Types.ObjectId],
+    ref: 'Deal',
+    validate: {
+      validator: (arr) => !arr || arr.length === 0 || arr.length >= 3,
+      message: 'Select at least 3 deals for Deal page.',
+    },
+    default: [],
+  },
+  storePageBannerDeals: {
+    type: [Schema.Types.ObjectId],
+    ref: 'Deal',
+    validate: {
+      validator: (arr) => !arr || arr.length === 0 || arr.length >= 3,
+      message: 'Select at least 3 deals for Store page.',
+    },
+    default: [],
+  },
+  categoryPageBannerDeals: {
+    type: [Schema.Types.ObjectId],
+    ref: 'Deal',
+    validate: {
+      validator: (arr) => !arr || arr.length === 0 || arr.length >= 3,
+      message: 'Select at least 3 deals for Category page.',
+    },
+    default: [],
   },
   homepageBanner: {
     type: String,
     required: true,
   },
-  midHomepageBanner: {
-    type: String,
+  midHomepageBanners: {
+    type: [Schema.Types.Mixed],
+    validate: {
+      validator: (arr) =>
+        Array.isArray(arr) &&
+        arr.length >= 3 &&
+        arr.every(
+          (item) =>
+            typeof item === 'string' ||
+            (item &&
+              typeof item === 'object' &&
+              typeof item.image === 'string' &&
+              item.image.trim().length > 0)
+        ),
+      message: 'Add at least 3 mid homepage banners with valid image URLs.',
+    },
     required: true,
   },
   allCouponsPageBanner: {
@@ -73,6 +114,10 @@ const HomeAdminSchema = new Schema({
   individualStoreBanner: {
     type: String,
     required: true,
+  },
+  faqImage: {
+    type: String,
+    default: "",
   },
   faqs: {
     type: [faqSchema],

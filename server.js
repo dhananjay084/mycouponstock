@@ -59,6 +59,7 @@ import contactRoutes from './Routes/contactRoute.js';
 import paymentRoutes from './Routes/paymentRoutes.js';
 import countryRoutes from './Routes/countryRoutes.js'
 import referralRoutes from './Routes/referralRoutes.js';
+import couponSubmissionRoutes from './Routes/couponSubmissionRoutes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/deals', dealRoutes);
@@ -72,6 +73,7 @@ app.use('/api/contacts', contactRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use("/api/countries", countryRoutes);
 app.use('/api/referral', referralRoutes);
+app.use('/api/coupon-submissions', couponSubmissionRoutes);
 
 // Health check route
 app.get('/test', (req, res) => {
