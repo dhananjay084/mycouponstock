@@ -60,6 +60,12 @@ import paymentRoutes from './Routes/paymentRoutes.js';
 import countryRoutes from './Routes/countryRoutes.js'
 import referralRoutes from './Routes/referralRoutes.js';
 import couponSubmissionRoutes from './Routes/couponSubmissionRoutes.js';
+import uploadRoutes from './Routes/uploadRoutes.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/deals', dealRoutes);
@@ -74,6 +80,8 @@ app.use('/api/payment', paymentRoutes);
 app.use("/api/countries", countryRoutes);
 app.use('/api/referral', referralRoutes);
 app.use('/api/coupon-submissions', couponSubmissionRoutes);
+app.use('/api/uploads', uploadRoutes);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Health check route
 app.get('/test', (req, res) => {
