@@ -53,6 +53,12 @@ export async function approveCouponSubmission(req, res) {
     if (submission.status === "approved") {
       return res.status(400).json({ success: false, error: "Submission already approved" });
     }
+    if (!submission.homePageTitle || !submission.dealType || !submission.details || !submission.redirectionLink) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required fields. Please complete Headline Offer, Deal Type, Details, and Redirection Link before approving.",
+      });
+    }
 
     const slug = await generateUniqueSlug(submission.dealTitle);
 
@@ -99,6 +105,51 @@ export async function rejectCouponSubmission(req, res) {
     submission.status = "rejected";
     await submission.save();
 
+    return res.status(200).json({ success: true, data: submission });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export async function updateCouponSubmission(req, res) {
+  try {
+    const { id } = req.params;
+    const submission = await CouponSubmission.findById(id);
+    if (!submission) {
+      return res.status(404).json({ success: false, error: "Submission not found" });
+    }
+    if (submission.status === "approved") {
+      return res.status(400).json({ success: false, error: "Approved submissions cannot be edited" });
+    }
+
+    const allowedFields = [
+      "dealTitle",
+      "dealDescription",
+      "dealImage",
+      "homePageTitle",
+      "dealType",
+      "dealCategory",
+      "details",
+      "categorySelect",
+      "couponCode",
+      "discount",
+      "expiredDate",
+      "store",
+      "country",
+      "redirectionLink",
+      "metaTitle",
+      "metaDescription",
+      "metaKeywords",
+      "showOnHomepage",
+    ];
+
+    allowedFields.forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+        submission[field] = req.body[field];
+      }
+    });
+
+    await submission.save();
     return res.status(200).json({ success: true, data: submission });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
