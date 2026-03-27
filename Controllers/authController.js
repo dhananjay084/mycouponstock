@@ -8,7 +8,7 @@ const generateAccessToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, {
     expiresIn: '15m', // Access token expires in 15 minutes
   });
-};
+}; 
 
 // Function to generate a Refresh Token (long-lived)
 // This token will be hashed and stored in the database
