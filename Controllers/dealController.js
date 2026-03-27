@@ -26,15 +26,21 @@ async function generateUniqueSlug(title) {
   
   let slug = baseSlug;
   let counter = 1;
+  const maxAttempts = 10;
   
   // Check if slug exists and make it unique
-  while (true) {
+  while (counter <= maxAttempts) {
     const existingDeal = await Deal.findOne({ slug });
     if (!existingDeal) {
       break;
     }
     slug = `${baseSlug}-${counter}`;
     counter++;
+  }
+
+  if (counter > maxAttempts) {
+    const fallback = `${baseSlug}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    return fallback;
   }
   
   return slug;
