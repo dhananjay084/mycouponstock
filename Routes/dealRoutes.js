@@ -6,6 +6,7 @@ import {
   getDeals,
   getDealById,
   createDeal,
+  bulkCreateDeals,
   deleteDeal,
   updateDeal,
   getDealBySlug,
@@ -24,6 +25,7 @@ router.get('/:id', getDealById);
 // router.delete('/:id', deleteDeal);
 // router.patch('/:id', updateDeal); // Keeping patch as per your provided file
 router.post('/', protect, authorizeRoles('admin'), createDeal); // Only admin can create
+router.post('/bulk', protect, authorizeRoles('admin'), bulkCreateDeals);
 router.delete('/:id', protect, authorizeRoles('admin'), deleteDeal); // Only admin can delete
 router.patch('/:id', protect, authorizeRoles('admin'), updateDeal); 
 

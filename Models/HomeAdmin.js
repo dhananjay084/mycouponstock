@@ -123,6 +123,14 @@ const HomeAdminSchema = new Schema({
     type: [faqSchema],
     required: true,
   },
+  homeFooterTitle: {
+    type: String,
+    default: "",
+  },
+  homeFooterDescription: {
+    type: String,
+    default: "",
+  },
 }, { timestamps: true });
 
 export default model('HomeAdmin', HomeAdminSchema);

@@ -49,7 +49,44 @@ const dealSchema = new Schema({
   },
   details: {
     type: String,
-    required: true,
+    required: false,
+  },
+  layoutFormat: {
+    type: String,
+    enum: ["custom", "structured"],
+    default: "custom",
+  },
+  descriptionImage: {
+    type: String,
+    default: "",
+  },
+  tagPrimary: {
+    type: String,
+    default: "",
+  },
+  tagSecondary: {
+    type: String,
+    default: "",
+  },
+  headline: {
+    type: String,
+    default: "",
+  },
+  usedTodayText: {
+    type: String,
+    default: "",
+  },
+  successRateText: {
+    type: String,
+    default: "",
+  },
+  endingSoonText: {
+    type: String,
+    default: "",
+  },
+  userTypeText: {
+    type: String,
+    default: "",
   },
   categorySelect: {
     type: String,

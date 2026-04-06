@@ -45,6 +45,64 @@ async function generateUniqueSlug(title) {
   
   return slug;
 }
+
+const normalizeCountry = (val) => {
+  if (Array.isArray(val)) return val.filter(Boolean);
+  if (typeof val === "string") {
+    return val
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
+const validateDealPayload = (payload = {}) => {
+  const {
+    dealTitle,
+    dealDescription,
+    dealImage,
+    homePageTitle,
+    dealType,
+    dealCategory,
+    details,
+    categorySelect,
+    couponCode,
+    discount,
+    store,
+    expiredDate,
+    redirectionLink,
+    country,
+    layoutFormat,
+  } = payload;
+
+  const normalizedLayout = layoutFormat === "structured" ? "structured" : "custom";
+  const normalizedCountry = normalizeCountry(country);
+
+  const missingFields = [];
+  const isEmpty = (val) =>
+    val === undefined ||
+    val === null ||
+    (typeof val === "string" && val.trim() === "") ||
+    (Array.isArray(val) && val.length === 0);
+
+  if (isEmpty(dealTitle)) missingFields.push("dealTitle");
+  if (isEmpty(dealDescription)) missingFields.push("dealDescription");
+  if (isEmpty(dealImage)) missingFields.push("dealImage");
+  if (isEmpty(homePageTitle)) missingFields.push("homePageTitle");
+  if (isEmpty(dealType)) missingFields.push("dealType");
+  if (isEmpty(dealCategory)) missingFields.push("dealCategory");
+  if (normalizedLayout !== "structured" && isEmpty(details)) missingFields.push("details");
+  if (isEmpty(categorySelect)) missingFields.push("categorySelect");
+  if (isEmpty(store)) missingFields.push("store");
+  if (isEmpty(couponCode)) missingFields.push("couponCode");
+  if (isEmpty(discount)) missingFields.push("discount");
+  if (isEmpty(expiredDate)) missingFields.push("expiredDate");
+  if (isEmpty(redirectionLink)) missingFields.push("redirectionLink");
+  if (isEmpty(normalizedCountry)) missingFields.push("country");
+
+  return { missingFields, normalizedLayout, normalizedCountry };
+};
 export async function createDeal(req, res) {
   const {
     dealTitle,
@@ -55,6 +113,15 @@ export async function createDeal(req, res) {
     dealType,
     dealCategory,
     details,
+    layoutFormat,
+    descriptionImage,
+    tagPrimary,
+    tagSecondary,
+    headline,
+    usedTodayText,
+    successRateText,
+    endingSoonText,
+    userTypeText,
     discount,
     categorySelect,
     couponCode,
@@ -67,23 +134,13 @@ export async function createDeal(req, res) {
     metaKeywords
   } = req.body;
 
-  if (
-    !dealTitle ||
-    !dealDescription ||
-    !dealImage ||
-    !homePageTitle ||
-    !dealType ||
-    !dealCategory ||
-    !details ||
-    !categorySelect ||
-    !store ||
-    !couponCode ||
-    !discount ||
-    !expiredDate ||
-    !redirectionLink ||
-    !country // ✅ ADD THIS TO VALIDATION
-  ) {
-    return res.status(400).json({ message: 'All required fields must be filled' });
+  const { missingFields, normalizedLayout, normalizedCountry } = validateDealPayload(req.body);
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      message: "All required fields must be filled",
+      missingFields,
+    });
   }
 
   try {
@@ -99,13 +156,22 @@ export async function createDeal(req, res) {
       dealType,
       dealCategory,
       details,
+      layoutFormat: normalizedLayout,
+      descriptionImage,
+      tagPrimary,
+      tagSecondary,
+      headline,
+      usedTodayText,
+      successRateText,
+      endingSoonText,
+      userTypeText,
       categorySelect,
       couponCode,
       discount,
       store,
       expiredDate,
       redirectionLink,
-      country, // ✅ ADD THIS WHEN SAVING
+      country: normalizedCountry, // ✅ ADD THIS WHEN SAVING
       metaTitle,
       metaDescription,
       metaKeywords
@@ -115,6 +181,62 @@ export async function createDeal(req, res) {
     res.status(201).json(savedDeal);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+}
+
+export async function bulkCreateDeals(req, res) {
+  try {
+    const { deals } = req.body || {};
+    if (!Array.isArray(deals) || deals.length === 0) {
+      return res.status(400).json({ success: false, message: "Deals array is required." });
+    }
+
+    const errors = [];
+    const saved = [];
+    const slugSet = new Set();
+
+    for (let i = 0; i < deals.length; i++) {
+      const payload = deals[i] || {};
+      const { missingFields, normalizedLayout, normalizedCountry } = validateDealPayload(payload);
+
+      if (missingFields.length > 0) {
+        errors.push({ index: i, missingFields, message: "Missing required fields" });
+        continue;
+      }
+
+      const baseSlug = await generateUniqueSlug(payload.dealTitle);
+      let uniqueSlug = baseSlug;
+      let suffix = 1;
+      while (slugSet.has(uniqueSlug)) {
+        uniqueSlug = `${baseSlug}-${suffix}`;
+        suffix += 1;
+      }
+      slugSet.add(uniqueSlug);
+
+      try {
+        const newDeal = new Deal({
+          ...payload,
+          slug: uniqueSlug,
+          layoutFormat: normalizedLayout,
+          country: normalizedCountry,
+          showOnHomepage: payload.showOnHomepage || false,
+        });
+        const savedDeal = await newDeal.save();
+        saved.push(savedDeal);
+      } catch (err) {
+        errors.push({ index: i, message: err.message || "Failed to save deal" });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      insertedCount: saved.length,
+      failedCount: errors.length,
+      errors,
+      data: saved,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
   }
 }
 
