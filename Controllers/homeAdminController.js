@@ -1,5 +1,9 @@
 import HomeAdmin from '../Models/HomeAdmin.js';
 
+const normalizeOptionalString = (value) => {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
+};
 
 export async function createHomeAdmin(req, res) {
     try {
@@ -15,8 +19,16 @@ export async function createHomeAdmin(req, res) {
           error: 'HomeAdmin entry already exists for this country.',
         });
       }
-  
-      const newHomeAdmin = await HomeAdmin.create(req.body);
+
+      const payload = {
+        ...req.body,
+        homeMetaTitle: normalizeOptionalString(req.body.homeMetaTitle),
+        homeMetaDescription: normalizeOptionalString(req.body.homeMetaDescription),
+        homeFooterTitle: normalizeOptionalString(req.body.homeFooterTitle),
+        homeFooterDescription: normalizeOptionalString(req.body.homeFooterDescription),
+      };
+
+      const newHomeAdmin = await HomeAdmin.create(payload);
       const populated = await HomeAdmin.findById(newHomeAdmin._id)
         .populate('bannerDeals')
         .populate('dealPageBannerDeals')
@@ -40,7 +52,25 @@ export async function createHomeAdmin(req, res) {
           return res.status(400).json({ success: false, error: "HomeAdmin entry already exists for this country." });
         }
       }
-      const updated = await HomeAdmin.findByIdAndUpdate(id, req.body, {
+
+      const payload = {
+        ...req.body,
+      };
+
+      if ("homeMetaTitle" in req.body) {
+        payload.homeMetaTitle = normalizeOptionalString(req.body.homeMetaTitle);
+      }
+      if ("homeMetaDescription" in req.body) {
+        payload.homeMetaDescription = normalizeOptionalString(req.body.homeMetaDescription);
+      }
+      if ("homeFooterTitle" in req.body) {
+        payload.homeFooterTitle = normalizeOptionalString(req.body.homeFooterTitle);
+      }
+      if ("homeFooterDescription" in req.body) {
+        payload.homeFooterDescription = normalizeOptionalString(req.body.homeFooterDescription);
+      }
+
+      const updated = await HomeAdmin.findByIdAndUpdate(id, { $set: payload }, {
         new: true,
         runValidators: true,
       })

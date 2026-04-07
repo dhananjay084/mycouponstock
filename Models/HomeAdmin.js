@@ -131,6 +131,14 @@ const HomeAdminSchema = new Schema({
     type: String,
     default: "",
   },
+  homeMetaTitle: {
+    type: String,
+    default: "",
+  },
+  homeMetaDescription: {
+    type: String,
+    default: "",
+  },
 }, { timestamps: true });
 
 export default model('HomeAdmin', HomeAdminSchema);
