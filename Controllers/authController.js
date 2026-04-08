@@ -19,7 +19,7 @@ const generateAndStoreRefreshToken = async (user) => {
 };
 // Helper to set HTTP-only cookies
 const setAuthCookies = (res, accessToken, refreshToken) => {
-  const isProd = process.env.NODE_ENV === 'production';
+  const isProd = process.env.NODE_ENV === 'production' ;
 
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
