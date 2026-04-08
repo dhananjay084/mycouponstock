@@ -137,7 +137,7 @@ export async function getStoreById(req, res) {
     const { country, countries } = req.query;
   
     if (!searchTerm) {
-      return res.status(400).json({ message: 'Search term (q) is required' });
+      return res.status(400).json({ message: 'Search term  is required' });
     }
   
     try {
