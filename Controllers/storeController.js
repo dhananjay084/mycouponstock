@@ -1,6 +1,8 @@
 import Store from '../Models/storeModel.js';
 import slugify from "slugify";
 
+const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 export async function getStores(req, res) {
   try {
     const { country, countries } = req.query;
@@ -131,7 +133,7 @@ export async function getStoreById(req, res) {
   }
   
   export async function searchStores(req, res) {
-    const searchTerm = req.query.q;
+    const searchTerm = String(req.query.q || "").trim();
     const { country, countries } = req.query;
   
     if (!searchTerm) {
@@ -139,10 +141,11 @@ export async function getStoreById(req, res) {
     }
   
     try {
-      // Create case-insensitive regex for "starts with"
-      const startsWithRegex = new RegExp('^' + searchTerm, 'i');
-      // Create case-insensitive regex for "contains"
-      const containsRegex = new RegExp(searchTerm, 'i');
+      const normalized = searchTerm.replace(/\s+/g, " ");
+      const terms = normalized.split(" ").map((term) => term.trim()).filter(Boolean);
+      const phraseRegex = new RegExp(escapeRegex(normalized), "i");
+      const startsWithRegex = new RegExp("^" + escapeRegex(normalized), "i");
+
       let countryFilter = {};
       if (country) {
         countryFilter = { country };
@@ -150,24 +153,56 @@ export async function getStoreById(req, res) {
         const list = countries.split(',').map((c) => c.trim()).filter(Boolean);
         if (list.length > 0) countryFilter = { country: { $in: list } };
       }
-  
-      // 1. Find stores where storeName starts with the searchTerm
-      const startsWithStores = await Store.find({ ...countryFilter, storeName: startsWithRegex }).lean(); // .lean() for plain JS objects
-  
-      // Get IDs of stores found in "starts with" to exclude them from "contains" search
-      const startsWithIds = startsWithStores.map(store => store._id);
-  
-      // 2. Find stores where storeName contains the searchTerm, excluding those already found
-      const containsStores = await Store.find({
+
+      const tokenConditions = terms.flatMap((term) => {
+        const tokenRegex = new RegExp(escapeRegex(term), "i");
+        return [
+          { storeName: tokenRegex },
+          { homePageTitle: tokenRegex },
+          { storeDescription: tokenRegex },
+        ];
+      });
+
+      const candidates = await Store.find({
         ...countryFilter,
-        storeName: containsRegex,
-        _id: { $nin: startsWithIds } // Exclude stores already found
-      }).lean();
-  
-      // Combine results: startsWithStores first, then containsStores
-      const combinedStores = [...startsWithStores, ...containsStores];
-  
-      res.json(combinedStores);
+        $or: [{ storeName: phraseRegex }, ...tokenConditions],
+      })
+        .limit(80)
+        .lean();
+
+      const ranked = candidates
+        .map((store) => {
+          const name = String(store?.storeName || "");
+          const title = String(store?.homePageTitle || "");
+          const description = String(store?.storeDescription || "");
+          let score = 0;
+
+          if (startsWithRegex.test(name)) score += 120;
+          if (phraseRegex.test(name)) score += 85;
+          if (phraseRegex.test(title)) score += 35;
+
+          let matchedTerms = 0;
+          for (const term of terms) {
+            const tokenRegex = new RegExp(escapeRegex(term), "i");
+            const inName = tokenRegex.test(name);
+            const inTitle = tokenRegex.test(title);
+            const inDescription = tokenRegex.test(description);
+
+            if (inName) score += 18;
+            if (inTitle) score += 9;
+            if (inDescription) score += 4;
+
+            if (inName || inTitle || inDescription) matchedTerms += 1;
+          }
+
+          if (matchedTerms === terms.length) score += 30;
+
+          return { store, score };
+        })
+        .sort((a, b) => b.score - a.score)
+        .map((item) => item.store);
+
+      res.json(ranked);
     } catch (err) {
       console.error('Error during store search:', err);
       res.status(500).json({ message: err.message });
