@@ -24,6 +24,12 @@ export async function createHomeAdmin(req, res) {
         ...req.body,
         homeMetaTitle: normalizeOptionalString(req.body.homeMetaTitle),
         homeMetaDescription: normalizeOptionalString(req.body.homeMetaDescription),
+        dealsMetaTitle: normalizeOptionalString(req.body.dealsMetaTitle),
+        dealsMetaDescription: normalizeOptionalString(req.body.dealsMetaDescription),
+        storeMetaTitle: normalizeOptionalString(req.body.storeMetaTitle),
+        storeMetaDescription: normalizeOptionalString(req.body.storeMetaDescription),
+        categoryMetaTitle: normalizeOptionalString(req.body.categoryMetaTitle),
+        categoryMetaDescription: normalizeOptionalString(req.body.categoryMetaDescription),
         homeFooterTitle: normalizeOptionalString(req.body.homeFooterTitle),
         homeFooterDescription: normalizeOptionalString(req.body.homeFooterDescription),
       };
@@ -62,6 +68,24 @@ export async function createHomeAdmin(req, res) {
       }
       if ("homeMetaDescription" in req.body) {
         payload.homeMetaDescription = normalizeOptionalString(req.body.homeMetaDescription);
+      }
+      if ("dealsMetaTitle" in req.body) {
+        payload.dealsMetaTitle = normalizeOptionalString(req.body.dealsMetaTitle);
+      }
+      if ("dealsMetaDescription" in req.body) {
+        payload.dealsMetaDescription = normalizeOptionalString(req.body.dealsMetaDescription);
+      }
+      if ("storeMetaTitle" in req.body) {
+        payload.storeMetaTitle = normalizeOptionalString(req.body.storeMetaTitle);
+      }
+      if ("storeMetaDescription" in req.body) {
+        payload.storeMetaDescription = normalizeOptionalString(req.body.storeMetaDescription);
+      }
+      if ("categoryMetaTitle" in req.body) {
+        payload.categoryMetaTitle = normalizeOptionalString(req.body.categoryMetaTitle);
+      }
+      if ("categoryMetaDescription" in req.body) {
+        payload.categoryMetaDescription = normalizeOptionalString(req.body.categoryMetaDescription);
       }
       if ("homeFooterTitle" in req.body) {
         payload.homeFooterTitle = normalizeOptionalString(req.body.homeFooterTitle);

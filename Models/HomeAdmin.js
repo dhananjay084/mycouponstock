@@ -69,7 +69,13 @@ const HomeAdminSchema = new Schema({
             (item &&
               typeof item === 'object' &&
               typeof item.image === 'string' &&
-              item.image.trim().length > 0)
+              item.image.trim().length > 0 &&
+              (!('imageMobile' in item) ||
+                item.imageMobile === "" ||
+                (typeof item.imageMobile === 'string' && item.imageMobile.trim().length > 0)) &&
+              (!('link' in item) ||
+                item.link === "" ||
+                (typeof item.link === 'string' && item.link.trim().length > 0)))
         ),
       message: 'Add at least 3 mid homepage banners with valid image URLs.',
     },
@@ -136,6 +142,30 @@ const HomeAdminSchema = new Schema({
     default: "",
   },
   homeMetaDescription: {
+    type: String,
+    default: "",
+  },
+  dealsMetaTitle: {
+    type: String,
+    default: "",
+  },
+  dealsMetaDescription: {
+    type: String,
+    default: "",
+  },
+  storeMetaTitle: {
+    type: String,
+    default: "",
+  },
+  storeMetaDescription: {
+    type: String,
+    default: "",
+  },
+  categoryMetaTitle: {
+    type: String,
+    default: "",
+  },
+  categoryMetaDescription: {
     type: String,
     default: "",
   },
