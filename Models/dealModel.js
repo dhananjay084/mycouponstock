@@ -120,4 +120,7 @@ const dealSchema = new Schema({
   timestamps: true
 });
 
+dealSchema.index({ country: 1 });
+dealSchema.index({ slug: 1 });
+
 export default model('Deal', dealSchema);

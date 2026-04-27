@@ -5,6 +5,7 @@ import User from '../Models/userModal.js'; // Use .js extension for ES modules
 import dotenv from 'dotenv';
 
 dotenv.config(); // Load environment variables
+const isProd = process.env.NODE_ENV === "production";
 
 // Serialize user into the session
 // This function determines which user data should be stored in the session.
@@ -38,11 +39,11 @@ passport.use(
     },
    async (accessToken, refreshToken, profile, done) => {
   try {
-    console.log('Google profile:', profile);
+    if (!isProd) console.log('Google profile:', profile);
     let user = await User.findOne({ googleId: profile.id });
 
     if (user) {
-      console.log('User found:', user.email);
+      if (!isProd) console.log('User found:', user.email);
       done(null, user);
     } else {
       user = new User({
@@ -51,7 +52,7 @@ passport.use(
         name: profile.displayName,
       });
       await user.save();
-      console.log('New user created:', user.email);
+      if (!isProd) console.log('New user created:', user.email);
       done(null, user);
     }
   } catch (err) {

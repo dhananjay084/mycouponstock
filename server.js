@@ -4,8 +4,6 @@ import cors from 'cors';
 import connectDB from './congif/db.js';
 import passport from 'passport';
 import cookieParser from 'cookie-parser';
-import session from 'express-session';
-import bodyParser from "body-parser";
 
 
 // Load environment variables
@@ -15,7 +13,9 @@ dotenv.config();
 
 const app = express();
 app.set("trust proxy", 1); // Enable secure cookies behind proxy (like on Vercel or Render)
-app.use(bodyParser.json());
+
+// Body parsing (keep limits sane to avoid memory spikes on large payloads)
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || "1mb" }));
 
 // CORS
 app.use(cors({
@@ -24,26 +24,10 @@ app.use(cors({
 }));
 
 // Middleware
-app.use(express.json());
 app.use(cookieParser());
-
-// 🔐 Session configuration (needed for passport sessions)
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'keyboardcat',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
-  }
-}));
-
-
 
 import './congif/passport-setup.js';  // Make sure this is configured correctly
 app.use(passport.initialize());
-app.use(passport.session());
 
 // Routes
 import authRoutes from './Routes/authRoutes.js';

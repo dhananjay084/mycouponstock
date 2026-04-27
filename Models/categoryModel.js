@@ -35,4 +35,6 @@ const categorySchema = new Schema({
   timestamps: true,
 });
 
+categorySchema.index({ name: 1 });
+
 export default model('Category', categorySchema);

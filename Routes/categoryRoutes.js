@@ -4,6 +4,7 @@ import { protect, authorizeRoles } from '../middleware/authmiddleware.js'; // Im
 const router = Router();
 import {
   getCategories,
+  getCategorySitemap,
   createCategory,
   updateCategory,
   deleteCategory,
@@ -11,6 +12,7 @@ import {
 } from '../Controllers/categoryController.js'; // Ensure path is correct
 
 
+router.get('/sitemap', getCategorySitemap);
 router.get('/', getCategories);
 // router.post('/', createCategory);
 router.post('/', protect, authorizeRoles('admin'), createCategory); // Only admin can create

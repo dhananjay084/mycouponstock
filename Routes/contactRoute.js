@@ -1,5 +1,6 @@
 import express from "express";
 import { createContact, getAllContacts } from "../Controllers/contactController.js";
+import { protect, authorizeRoles } from "../middleware/authmiddleware.js";
 
 const router = express.Router();
 
@@ -7,6 +8,6 @@ const router = express.Router();
 router.post("/", createContact);
 
 // GET /api/contacts
-router.get("/", getAllContacts);
+router.get("/", protect, authorizeRoles("admin"), getAllContacts);
 
 export default router;

@@ -3,6 +3,7 @@ const router = Router();
 
 import {
   getStores,
+  getStoreSitemap,
   getStoreById,
   createStore,
   deleteStore,
@@ -17,6 +18,7 @@ import { protect, authorizeRoles } from '../middleware/authmiddleware.js';
 
 // ✅ Specific routes FIRST
 router.get('/search', searchStores);
+router.get('/sitemap', getStoreSitemap);
 router.get('/slug/:slug', getStoreBySlug);
 
 // ✅ General list

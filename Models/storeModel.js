@@ -78,4 +78,6 @@ storeSchema.pre('validate', function (next) {
   next();
 });
 
+storeSchema.index({ country: 1 });
+
 export default model('Store', storeSchema);

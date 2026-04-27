@@ -122,29 +122,30 @@ export const login = async (req, res) => {
 // @route   GET /api/auth/google/callback
 // @access  Public (no backend authentication check beyond Passport's initial auth)
 export const googleAuthCallback = async (req, res) => {
-  console.log('Google OAuth callback hit');
+  const isProd = process.env.NODE_ENV === "production";
+  if (!isProd) console.log('Google OAuth callback hit');
   try {
     if (req.user) {
-      console.log('req.user:', req.user);
+      if (!isProd) console.log('req.user:', req.user);
       const user = await User.findById(req.user._id);
-      console.log('Found user:', user);
+      if (!isProd) console.log('Found user:', user);
       if (!user) {
-        console.log('User not found, redirecting to login with error');
+        if (!isProd) console.log('User not found, redirecting to login with error');
         return res.redirect(`${process.env.CLIENT_URL}/login?error=google_auth_failed`);
       }
 
       const accessToken = generateAccessToken(user._id, user.role);
       const refreshToken = await generateAndStoreRefreshToken(user);
-      console.log('Generated tokens');
+      if (!isProd) console.log('Generated tokens');
 
       setAuthCookies(res, accessToken, refreshToken);
-      console.log('Cookies set');
+      if (!isProd) console.log('Cookies set');
 
       const userName = encodeURIComponent(user.name || '');
       const userEmail = encodeURIComponent(user.email || '');
       return res.redirect(`${process.env.CLIENT_URL}/login?name=${userName}&email=${userEmail}`);
     } else {
-      console.log('No req.user, redirecting to login with error');
+      if (!isProd) console.log('No req.user, redirecting to login with error');
       return res.redirect(`${process.env.CLIENT_URL}/login?error=google_auth_failed`);
     }
   } catch (error) {

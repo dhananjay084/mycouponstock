@@ -1,22 +1,60 @@
 import Store from '../Models/storeModel.js';
 import slugify from "slugify";
+import { sharedCache } from "../utils/simpleCache.js";
 
 const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const buildCountryQuery = (country, countries) => {
+  if (country) return { country };
+  if (countries) {
+    const list = String(countries)
+      .split(',')
+      .map((c) => c.trim())
+      .filter(Boolean);
+    if (list.length > 0) return { country: { $in: list } };
+  }
+  return {};
+};
 
 export async function getStores(req, res) {
   try {
     const { country, countries } = req.query;
-    let query = {};
-    if (country) {
-      query.country = country;
-    } else if (countries) {
-      const list = countries.split(',').map((c) => c.trim()).filter(Boolean);
-      if (list.length > 0) query.country = { $in: list };
-    }
-    const stores = await Store.find(query);
+    const query = buildCountryQuery(country, countries);
+    const stores = await Store.find(query).lean();
     res.json(stores);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+}
+
+export async function getStoreSitemap(req, res) {
+  try {
+    const { country, countries, limit } = req.query;
+    const query = buildCountryQuery(country, countries);
+
+    const cacheTtlMs = Number.parseInt(process.env.SITEMAP_CACHE_MS || "3600000", 10);
+    const cacheKey = `sitemap:stores:${JSON.stringify({ query, limit: limit || "" })}`;
+    const cached = sharedCache.get(cacheKey);
+    if (cached) {
+      res.set("Cache-Control", "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400");
+      return res.status(200).json(cached);
+    }
+
+    const maxLimit = Number.parseInt(process.env.SITEMAP_MAX_ITEMS || "50000", 10);
+    let requested = Number.parseInt(limit || String(maxLimit), 10);
+    if (Number.isNaN(requested) || requested <= 0) requested = maxLimit;
+    requested = Math.min(requested, maxLimit);
+
+    const stores = await Store.find(query)
+      .select("slug updatedAt createdAt")
+      .limit(requested)
+      .lean();
+
+    sharedCache.set(cacheKey, stores, Number.isFinite(cacheTtlMs) ? cacheTtlMs : 3600000);
+    res.set("Cache-Control", "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400");
+    return res.status(200).json(stores);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
   }
 }
 

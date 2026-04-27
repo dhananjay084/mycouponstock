@@ -1,4 +1,5 @@
 import HomeAdmin from '../Models/HomeAdmin.js';
+import { sharedCache } from "../utils/simpleCache.js";
 
 const normalizeOptionalString = (value) => {
   if (value === null || value === undefined) return "";
@@ -131,4 +132,34 @@ export async function createHomeAdmin(req, res) {
       return res.status(500).json({ success: false, error: err.message });
     }
   }
+
+export async function getHomeAdminSeo(req, res) {
+  try {
+    const cacheTtlMs = Number.parseInt(process.env.HOME_ADMIN_SEO_CACHE_MS || "3600000", 10);
+    const country = String(req.query.country || "").trim();
+    const cacheKey = `homeadmin:seo:${country.toLowerCase() || "all"}`;
+
+    const cached = sharedCache.get(cacheKey);
+    if (cached) {
+      res.set("Cache-Control", "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400");
+      return res.status(200).json({ success: true, data: cached });
+    }
+
+    let query = {};
+    if (country) {
+      const escaped = country.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      query = { country: new RegExp(`^${escaped}$`, "i") };
+    }
+
+    const data = await HomeAdmin.find(query)
+      .select("country homeMetaTitle homeMetaDescription dealsMetaTitle dealsMetaDescription storeMetaTitle storeMetaDescription categoryMetaTitle categoryMetaDescription updatedAt createdAt")
+      .lean();
+
+    sharedCache.set(cacheKey, data, Number.isFinite(cacheTtlMs) ? cacheTtlMs : 3600000);
+    res.set("Cache-Control", "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400");
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
   

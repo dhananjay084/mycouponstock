@@ -12,5 +12,7 @@ const countrySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+countrySchema.index({ country_name: 1 });
+
 const Country = mongoose.model("Country", countrySchema);
 export default Country;

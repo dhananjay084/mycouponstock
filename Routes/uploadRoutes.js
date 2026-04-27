@@ -16,18 +16,30 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase();
-    const safeExt = ext || '.jpg';
+    const mime = String(file.mimetype || "").toLowerCase();
+    const mimeToExt = {
+      "image/jpeg": ".jpg",
+      "image/jpg": ".jpg",
+      "image/png": ".png",
+      "image/webp": ".webp",
+      "image/gif": ".gif",
+    };
+    const safeExt = mimeToExt[mime] || ".bin";
     cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${safeExt}`);
   },
 });
 
 const fileFilter = (_req, file, cb) => {
-  if (file.mimetype && file.mimetype.startsWith('image/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image uploads are allowed'));
-  }
+  const allowed = new Set([
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+  ]);
+  const mime = String(file.mimetype || "").toLowerCase();
+  if (!allowed.has(mime)) return cb(new Error("Only JPG/PNG/WEBP/GIF uploads are allowed"));
+  return cb(null, true);
 };
 
 const upload = multer({

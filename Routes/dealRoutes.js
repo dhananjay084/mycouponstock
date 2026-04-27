@@ -4,6 +4,7 @@ import { protect, authorizeRoles } from '../middleware/authmiddleware.js'; // Im
 const router = Router();
 import {
   getDeals,
+  getDealSitemap,
   getDealById,
   createDeal,
   bulkCreateDeals,
@@ -16,6 +17,7 @@ import {
 // New search route - MUST be placed before '/:id'
 router.get('/search', searchDeals);
 
+router.get('/sitemap', getDealSitemap);
 router.get('/', getDeals);
 router.get('/slug/:slug', getDealBySlug);
 

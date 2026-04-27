@@ -5,6 +5,7 @@ import { protect, authorizeRoles } from '../middleware/authmiddleware.js'; // Im
 import {
   createBlog,
   getAllBlogs, // Using getAllBlogs as per your provided code
+  getBlogSitemap,
   getBlogById,
   updateBlog,
   deleteBlog,
@@ -12,6 +13,7 @@ import {
 
 // --- Public Routes ---
 // GET all blogs
+router.get('/sitemap', getBlogSitemap);
 router.get('/', getAllBlogs);
 // GET a single blog by ID
 router.get('/:id', getBlogById);

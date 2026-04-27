@@ -21,7 +21,8 @@ router.post('/login', authController.login);
 router.get(
   '/google',
   passport.authenticate('google', {
-    scope: ['profile', 'email'] // Request access to user's profile and email
+    scope: ['profile', 'email'],
+    session: false,
   })
 );
 
@@ -32,7 +33,7 @@ router.get(
   '/google/callback',
   passport.authenticate('google', {
     failureRedirect: `${process.env.CLIENT_URL}/login?error=google_auth_failed`, // Redirect on failure
-    session: true // Keep session after authentication
+    session: false
   }),
   authController.googleAuthCallback // Custom callback handler after successful authentication
 );
