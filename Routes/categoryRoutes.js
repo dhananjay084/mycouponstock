@@ -5,6 +5,7 @@ const router = Router();
 import {
   getCategories,
   getCategorySitemap,
+  getCategoryByName,
   createCategory,
   updateCategory,
   deleteCategory,
@@ -13,6 +14,7 @@ import {
 
 
 router.get('/sitemap', getCategorySitemap);
+router.get('/name/:name', getCategoryByName);
 router.get('/', getCategories);
 // router.post('/', createCategory);
 router.post('/', protect, authorizeRoles('admin'), createCategory); // Only admin can create

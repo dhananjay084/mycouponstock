@@ -38,6 +38,20 @@ export const getCategorySitemap = async (req, res) => {
   }
 };
 
+export const getCategoryByName = async (req, res) => {
+  try {
+    const raw = String(req.params.name || "").trim();
+    if (!raw) return res.status(400).json({ message: "Category name is required" });
+
+    const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const category = await Category.findOne({ name: new RegExp(`^${escaped}$`, "i") }).lean();
+    if (!category) return res.status(404).json({ message: "Category not found" });
+    return res.status(200).json(category);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
 export const createCategory = async (req, res) => {
   const { name, image, popularStore, showOnHomepage, metaTitle,
     metaDescription,
