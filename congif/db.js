@@ -1,7 +1,4 @@
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

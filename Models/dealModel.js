@@ -121,6 +121,5 @@ const dealSchema = new Schema({
 });
 
 dealSchema.index({ country: 1 });
-dealSchema.index({ slug: 1 });
 
 export default model('Deal', dealSchema);

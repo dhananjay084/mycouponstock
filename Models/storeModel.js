@@ -12,7 +12,6 @@ const storeSchema = new Schema({
     required: true,
     unique: true,
     lowercase: true,
-    index: true,
   },
 
   storeDescription: {
