@@ -3,8 +3,6 @@ import User from '../Models/userModal.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto'; // For hashing refresh tokens
 
-const GOOGLE_TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo';
-
 // Function to generate an Access Token (short-lived)
 const generateAccessToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, {
@@ -48,41 +46,14 @@ const serializeUser = (user) => ({
   role: user.role,
 });
 
-const verifyGoogleCredential = async (credential) => {
-  const url = new URL(GOOGLE_TOKENINFO_URL);
-  url.searchParams.set('id_token', credential);
-
-  const response = await fetch(url, { method: 'GET' });
-  if (!response.ok) {
-    throw new Error('Google token verification failed');
-  }
-
-  const payload = await response.json();
-  const validIssuers = new Set(['accounts.google.com', 'https://accounts.google.com']);
-
-  if (!payload?.sub || !payload?.aud || !validIssuers.has(payload.iss)) {
-    throw new Error('Invalid Google token payload');
-  }
-
-  if (payload.aud !== process.env.GOOGLE_CLIENT_ID) {
-    throw new Error('Google token audience mismatch');
-  }
-
-  if (payload.email_verified !== 'true' && payload.email_verified !== true) {
-    throw new Error('Google account email is not verified');
-  }
-
-  return payload;
-};
-
-
 // @desc    Register a new user
 // @route   POST /api/auth/register
 // @access  Public (no backend authentication check)
 export const register = async (req, res) => {
   const { name, email, phone, password, confirmPassword } = req.body;
+  const normalizedEmail = String(email || '').trim().toLowerCase();
 
-  if (!name || !email || !phone || !password || !confirmPassword) {
+  if (!name || !normalizedEmail || !phone || !password || !confirmPassword) {
     return res.status(400).json({ message: 'Please enter all fields' });
   }
   if (password !== confirmPassword) {
@@ -90,12 +61,12 @@ export const register = async (req, res) => {
   }
 
   try {
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
-    const user = await User.create({ name, email, phone, password, role: 'user' }); // Default role 'user'
+    const user = await User.create({ name, email: normalizedEmail, phone, password, role: 'user' }); // Default role 'user'
 
     if (user) {
       const accessToken = generateAccessToken(user._id, user.role);
@@ -121,13 +92,18 @@ export const register = async (req, res) => {
 // @access  Public (no backend authentication check)
 export const login = async (req, res) => {
   const { email, password } = req.body;
+  const normalizedEmail = String(email || '').trim().toLowerCase();
 
-  if (!email || !password) {
+  if (!normalizedEmail || !password) {
     return res.status(400).json({ message: 'Please enter all fields' });
   }
 
   try {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (user && user.authProvider !== 'local') {
+      return res.status(401).json({ message: 'This account uses social login. Please continue with social sign-in.' });
+    }
 
     if (user && (await user.matchPassword(password))) {
       const accessToken = generateAccessToken(user._id, user.role);
@@ -148,45 +124,65 @@ export const login = async (req, res) => {
   }
 };
 
-// @desc    Login/register with Google ID token
-// @route   POST /api/auth/google
+// @desc    Login/register using frontend social auth payload
+// @route   POST /api/auth/social-login
 // @access  Public
-export const googleLogin = async (req, res) => {
-  const { credential } = req.body || {};
+export const socialLogin = async (req, res) => {
+  const {
+    provider,
+    email,
+    name,
+    providerUserId,
+    avatar,
+    emailVerified,
+  } = req.body || {};
+  const normalizedProvider = String(provider || '').trim().toLowerCase();
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const normalizedProviderUserId = String(providerUserId || '').trim();
 
-  if (!credential) {
-    return res.status(400).json({ message: 'Google credential is required' });
+  if (!normalizedProvider || !normalizedEmail || !normalizedProviderUserId) {
+    return res.status(400).json({ message: 'Provider login requires email and provider user id.' });
+  }
+
+  if (emailVerified === false) {
+    return res.status(400).json({ message: 'Provider email is not verified.' });
   }
 
   try {
-    const googleProfile = await verifyGoogleCredential(credential);
-
     let user = await User.findOne({
-      $or: [
-        { googleId: googleProfile.sub },
-        ...(googleProfile.email ? [{ email: googleProfile.email }] : []),
-      ],
+      email: normalizedEmail,
     });
 
     if (!user) {
       user = await User.create({
-        googleId: googleProfile.sub,
-        email: googleProfile.email,
-        name: googleProfile.name || googleProfile.given_name || 'Google User',
+        authProvider: 'social',
+        socialProvider: normalizedProvider,
+        socialProviderId: normalizedProviderUserId,
+        email: normalizedEmail,
+        name: String(name || 'Social User').trim(),
+        avatar: avatar ? String(avatar).trim() : '',
         role: 'user',
       });
     } else {
       let hasChanges = false;
-      if (!user.googleId) {
-        user.googleId = googleProfile.sub;
+      if (user.authProvider !== 'social') {
+        user.authProvider = 'social';
         hasChanges = true;
       }
-      if (!user.email && googleProfile.email) {
-        user.email = googleProfile.email;
+      if (!user.socialProvider) {
+        user.socialProvider = normalizedProvider;
         hasChanges = true;
       }
-      if (!user.name && googleProfile.name) {
-        user.name = googleProfile.name;
+      if (!user.socialProviderId) {
+        user.socialProviderId = normalizedProviderUserId;
+        hasChanges = true;
+      }
+      if (!user.name && name) {
+        user.name = String(name).trim();
+        hasChanges = true;
+      }
+      if (!user.avatar && avatar) {
+        user.avatar = String(avatar).trim();
         hasChanges = true;
       }
       if (hasChanges) {
@@ -201,11 +197,11 @@ export const googleLogin = async (req, res) => {
 
     return res.status(200).json({
       user: serializeUser(user),
-      message: 'Google login successful.',
+      message: 'Social login successful.',
     });
   } catch (error) {
-    console.error('Google login error:', error.stack || error.message);
-    return res.status(401).json({ message: 'Google authentication failed.' });
+    console.error('Social login error:', error.stack || error.message);
+    return res.status(401).json({ message: 'Social authentication failed.' });
   }
 };
 

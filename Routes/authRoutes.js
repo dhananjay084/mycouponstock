@@ -14,20 +14,10 @@ router.post('/register', authController.register);
 // @access  Public (no backend authentication check)
 router.post('/login', authController.login);
 
-// @route   POST /api/auth/google
-// @desc    Login/register using a Google credential token from the frontend
+// @route   POST /api/auth/social-login
+// @desc    Login/register using frontend social auth payload
 // @access  Public
-router.get('/google', (req, res) => {
-  res.status(200).json({
-    message: 'Google auth endpoint is available. Send a POST request with a credential token in the request body.',
-    method: 'POST',
-    body: {
-      credential: 'GOOGLE_ID_TOKEN',
-    },
-  });
-});
-
-router.post('/google', authController.googleLogin);
+router.post('/social-login', authController.socialLogin);
 
 // @route   POST /api/auth/refresh-token
 // @desc    Get a new access token using refresh token from cookie

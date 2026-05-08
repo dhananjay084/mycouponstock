@@ -6,21 +6,30 @@ import crypto from 'crypto';
 const UserSchema = new mongoose.Schema({
   email: {
     type: String,
-    required: function () { return !this.googleId; },
+    required: true,
     unique: true,
     sparse: true
   },
   password: {
     type: String,
-    required: function () { return !this.googleId; }
+    required: function () { return this.authProvider === 'local'; }
   },
-  googleId: {
+  authProvider: {
     type: String,
-    unique: true,
+    enum: ['local', 'social'],
+    default: 'local'
+  },
+  socialProvider: {
+    type: String,
+    default: null
+  },
+  socialProviderId: {
+    type: String,
     sparse: true
   },
   name: { type: String },
   phone: { type: String },
+  avatar: { type: String },
   refreshToken: { type: String },
   role: {
     type: String,
