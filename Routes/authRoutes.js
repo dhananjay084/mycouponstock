@@ -1,6 +1,5 @@
 // backend/routes/authRoutes.js
 import express from 'express';
-import passport from 'passport'; // Import Passport (still used for Google OAuth initiation)
 import * as authController from '../Controllers/authController.js'; // Import all exports from authController
 
 const router = express.Router();
@@ -15,28 +14,20 @@ router.post('/register', authController.register);
 // @access  Public (no backend authentication check)
 router.post('/login', authController.login);
 
-// @route   GET /api/auth/google
-// @desc    Initiate Google OAuth authentication
-// @access  Public (no backend authentication check beyond Passport's initial redirect)
-router.get(
-  '/google',
-  passport.authenticate('google', {
-    scope: ['profile', 'email'],
-    session: false,
-  })
-);
+// @route   POST /api/auth/google
+// @desc    Login/register using a Google credential token from the frontend
+// @access  Public
+router.get('/google', (req, res) => {
+  res.status(200).json({
+    message: 'Google auth endpoint is available. Send a POST request with a credential token in the request body.',
+    method: 'POST',
+    body: {
+      credential: 'GOOGLE_ID_TOKEN',
+    },
+  });
+});
 
-// @route   GET /api/auth/google/callback
-// @desc    Google OAuth callback route (generates access & refresh tokens, sets cookies)
-// @access  Public (no backend authentication check beyond Passport's initial auth)
-router.get(
-  '/google/callback',
-  passport.authenticate('google', {
-    failureRedirect: `${process.env.CLIENT_URL}/login?error=google_auth_failed`, // Redirect on failure
-    session: false
-  }),
-  authController.googleAuthCallback // Custom callback handler after successful authentication
-);
+router.post('/google', authController.googleLogin);
 
 // @route   POST /api/auth/refresh-token
 // @desc    Get a new access token using refresh token from cookie

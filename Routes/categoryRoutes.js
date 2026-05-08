@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { protect, authorizeRoles } from '../middleware/authmiddleware.js'; // Import your middleware
+import { requireAdmin } from '../middleware/authmiddleware.js'; // Import your middleware
 
 const router = Router();
 import {
@@ -17,9 +17,9 @@ router.get('/sitemap', getCategorySitemap);
 router.get('/name/:name', getCategoryByName);
 router.get('/', getCategories);
 // router.post('/', createCategory);
-router.post('/', protect, authorizeRoles('admin'), createCategory); // Only admin can create
-router.put('/:id', protect, authorizeRoles('admin'), updateCategory); 
-router.delete('/:id', protect, authorizeRoles('admin'), deleteCategory); // Only admin can delete
+router.post('/', requireAdmin, createCategory); // Only admin can create
+router.put('/:id', requireAdmin, updateCategory); 
+router.delete('/:id', requireAdmin, deleteCategory); // Only admin can delete
 
 // router.put('/:id', updateCategory); // Assuming you use PUT for update
 // router.delete('/:id', deleteCategory);

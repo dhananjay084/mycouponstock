@@ -6,14 +6,14 @@ import {
   rejectCouponSubmission,
   updateCouponSubmission,
 } from "../Controllers/couponSubmissionController.js";
-import { protect, authorizeRoles } from "../middleware/authmiddleware.js";
+import { requireAdmin } from "../middleware/authmiddleware.js";
 
 const router = Router();
 
 router.post("/", createCouponSubmission);
-router.get("/", protect, authorizeRoles("admin"), getCouponSubmissions);
-router.patch("/:id", protect, authorizeRoles("admin"), updateCouponSubmission);
-router.patch("/:id/approve", protect, authorizeRoles("admin"), approveCouponSubmission);
-router.patch("/:id/reject", protect, authorizeRoles("admin"), rejectCouponSubmission);
+router.get("/", requireAdmin, getCouponSubmissions);
+router.patch("/:id", requireAdmin, updateCouponSubmission);
+router.patch("/:id/approve", requireAdmin, approveCouponSubmission);
+router.patch("/:id/reject", requireAdmin, rejectCouponSubmission);
 
 export default router;

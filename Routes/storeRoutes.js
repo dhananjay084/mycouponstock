@@ -12,7 +12,7 @@ import {
   getStoreBySlug
 } from '../Controllers/storeController.js';
 
-import { protect, authorizeRoles } from '../middleware/authmiddleware.js';
+import { requireAdmin } from '../middleware/authmiddleware.js';
 
 /* ================= PUBLIC ROUTES ================= */
 
@@ -29,8 +29,8 @@ router.get('/:id', getStoreById);
 
 /* ================= ADMIN ROUTES ================= */
 
-router.post('/', protect, authorizeRoles('admin'), createStore);
-router.put('/:id', protect, authorizeRoles('admin'), updateStore);
-router.delete('/:id', protect, authorizeRoles('admin'), deleteStore);
+router.post('/', requireAdmin, createStore);
+router.put('/:id', requireAdmin, updateStore);
+router.delete('/:id', requireAdmin, deleteStore);
 
 export default router;

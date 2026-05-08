@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { protect, authorizeRoles } from '../middleware/authmiddleware.js'; // Import your middleware
+import { requireAdmin } from '../middleware/authmiddleware.js'; // Import your middleware
 
 const router = Router();
 import {
@@ -26,9 +26,9 @@ router.get('/:id', getDealById);
 // router.post('/', createDeal);
 // router.delete('/:id', deleteDeal);
 // router.patch('/:id', updateDeal); // Keeping patch as per your provided file
-router.post('/', protect, authorizeRoles('admin'), createDeal); // Only admin can create
-router.post('/bulk', protect, authorizeRoles('admin'), bulkCreateDeals);
-router.delete('/:id', protect, authorizeRoles('admin'), deleteDeal); // Only admin can delete
-router.patch('/:id', protect, authorizeRoles('admin'), updateDeal); 
+router.post('/', requireAdmin, createDeal); // Only admin can create
+router.post('/bulk', requireAdmin, bulkCreateDeals);
+router.delete('/:id', requireAdmin, deleteDeal); // Only admin can delete
+router.patch('/:id', requireAdmin, updateDeal); 
 
 export default router;

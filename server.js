@@ -1,13 +1,9 @@
 import express from 'express';
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import cors from 'cors';
 import connectDB from './congif/db.js';
-import passport from 'passport';
 import cookieParser from 'cookie-parser';
-
-
-// Load environment variables
-dotenv.config();
+import mongoose from 'mongoose';
 
 // Connect to database
 
@@ -25,9 +21,6 @@ app.use(cors({
 
 // Middleware
 app.use(cookieParser());
-
-import './congif/passport-setup.js';  // Make sure this is configured correctly
-app.use(passport.initialize());
 
 // Routes
 import authRoutes from './Routes/authRoutes.js';
@@ -50,6 +43,33 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const requiresDatabase = (req) =>
+  req.path.startsWith('/api/auth') ||
+  req.path.startsWith('/api/deals') ||
+  req.path.startsWith('/api/stores') ||
+  req.path.startsWith('/api/categories') ||
+  req.path.startsWith('/api/reviews') ||
+  req.path.startsWith('/api/blogs') ||
+  req.path.startsWith('/api/admin') ||
+  req.path.startsWith('/api/countries') ||
+  req.path.startsWith('/api/referral') ||
+  req.path.startsWith('/api/coupon-submissions');
+
+app.use((req, res, next) => {
+  if (!requiresDatabase(req)) {
+    return next();
+  }
+
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      message: 'Database is unavailable. Please try again shortly.',
+      code: 'DATABASE_UNAVAILABLE',
+    });
+  }
+
+  return next();
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/deals', dealRoutes);
 app.use('/api/stores', storeRoutes);
@@ -68,14 +88,16 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Health check route
 app.get('/test', (req, res) => {
-  res.send('Backend server is running!');
+  res.status(200).json({
+    message: 'Backend server is running!',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+  });
 });
 
-// Start server only after DB is connected
 const PORT = process.env.PORT || 5000;
-async function startServer() {
-  await connectDB();
-  app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
-}
-
-startServer();
+app.listen(PORT, () => {
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
+  connectDB().catch((error) => {
+    console.error('❌ MongoDB background connection error:', error.message);
+  });
+});

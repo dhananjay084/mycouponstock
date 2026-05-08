@@ -3,6 +3,8 @@ import User from '../Models/userModal.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto'; // For hashing refresh tokens
 
+const GOOGLE_TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo';
+
 // Function to generate an Access Token (short-lived)
 const generateAccessToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, {
@@ -38,6 +40,41 @@ const setAuthCookies = (res, accessToken, refreshToken) => {
   });
 };
 
+const serializeUser = (user) => ({
+  _id: user._id,
+  name: user.name,
+  email: user.email,
+  phone: user.phone,
+  role: user.role,
+});
+
+const verifyGoogleCredential = async (credential) => {
+  const url = new URL(GOOGLE_TOKENINFO_URL);
+  url.searchParams.set('id_token', credential);
+
+  const response = await fetch(url, { method: 'GET' });
+  if (!response.ok) {
+    throw new Error('Google token verification failed');
+  }
+
+  const payload = await response.json();
+  const validIssuers = new Set(['accounts.google.com', 'https://accounts.google.com']);
+
+  if (!payload?.sub || !payload?.aud || !validIssuers.has(payload.iss)) {
+    throw new Error('Invalid Google token payload');
+  }
+
+  if (payload.aud !== process.env.GOOGLE_CLIENT_ID) {
+    throw new Error('Google token audience mismatch');
+  }
+
+  if (payload.email_verified !== 'true' && payload.email_verified !== true) {
+    throw new Error('Google account email is not verified');
+  }
+
+  return payload;
+};
+
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -67,11 +104,7 @@ export const register = async (req, res) => {
       setAuthCookies(res, accessToken, refreshToken);
 
       res.status(201).json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
+        ...serializeUser(user),
         message: 'Registration successful. You are logged in.'
       });
     } else {
@@ -103,10 +136,7 @@ export const login = async (req, res) => {
       setAuthCookies(res, accessToken, refreshToken);
 
       res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
+        ...serializeUser(user),
         message: 'Login successful.'
       });
     } else {
@@ -118,39 +148,64 @@ export const login = async (req, res) => {
   }
 };
 
-// @desc    Google OAuth Callback
-// @route   GET /api/auth/google/callback
-// @access  Public (no backend authentication check beyond Passport's initial auth)
-export const googleAuthCallback = async (req, res) => {
-  const isProd = process.env.NODE_ENV === "production";
-  if (!isProd) console.log('Google OAuth callback hit');
+// @desc    Login/register with Google ID token
+// @route   POST /api/auth/google
+// @access  Public
+export const googleLogin = async (req, res) => {
+  const { credential } = req.body || {};
+
+  if (!credential) {
+    return res.status(400).json({ message: 'Google credential is required' });
+  }
+
   try {
-    if (req.user) {
-      if (!isProd) console.log('req.user:', req.user);
-      const user = await User.findById(req.user._id);
-      if (!isProd) console.log('Found user:', user);
-      if (!user) {
-        if (!isProd) console.log('User not found, redirecting to login with error');
-        return res.redirect(`${process.env.CLIENT_URL}/login?error=google_auth_failed`);
-      }
+    const googleProfile = await verifyGoogleCredential(credential);
 
-      const accessToken = generateAccessToken(user._id, user.role);
-      const refreshToken = await generateAndStoreRefreshToken(user);
-      if (!isProd) console.log('Generated tokens');
+    let user = await User.findOne({
+      $or: [
+        { googleId: googleProfile.sub },
+        ...(googleProfile.email ? [{ email: googleProfile.email }] : []),
+      ],
+    });
 
-      setAuthCookies(res, accessToken, refreshToken);
-      if (!isProd) console.log('Cookies set');
-
-      const userName = encodeURIComponent(user.name || '');
-      const userEmail = encodeURIComponent(user.email || '');
-      return res.redirect(`${process.env.CLIENT_URL}/login?name=${userName}&email=${userEmail}`);
+    if (!user) {
+      user = await User.create({
+        googleId: googleProfile.sub,
+        email: googleProfile.email,
+        name: googleProfile.name || googleProfile.given_name || 'Google User',
+        role: 'user',
+      });
     } else {
-      if (!isProd) console.log('No req.user, redirecting to login with error');
-      return res.redirect(`${process.env.CLIENT_URL}/login?error=google_auth_failed`);
+      let hasChanges = false;
+      if (!user.googleId) {
+        user.googleId = googleProfile.sub;
+        hasChanges = true;
+      }
+      if (!user.email && googleProfile.email) {
+        user.email = googleProfile.email;
+        hasChanges = true;
+      }
+      if (!user.name && googleProfile.name) {
+        user.name = googleProfile.name;
+        hasChanges = true;
+      }
+      if (hasChanges) {
+        await user.save({ validateBeforeSave: false });
+      }
     }
+
+    const accessToken = generateAccessToken(user._id, user.role);
+    const refreshToken = await generateAndStoreRefreshToken(user);
+
+    setAuthCookies(res, accessToken, refreshToken);
+
+    return res.status(200).json({
+      user: serializeUser(user),
+      message: 'Google login successful.',
+    });
   } catch (error) {
-    console.error('🔥 googleAuthCallback error:', error.stack || error.message);
-    return res.status(500).json({ message: 'Internal server error during Google login' });
+    console.error('Google login error:', error.stack || error.message);
+    return res.status(401).json({ message: 'Google authentication failed.' });
   }
 };
 
@@ -239,7 +294,7 @@ export const logout = async (req, res) => {
 // This route will now return user data based on the access token in the cookie,
 // but it won't enforce that the token is valid or present.
 // The frontend will need to handle the token verification.
-export const getCurrentUser = (req, res) => {
+export const getCurrentUser = async (req, res) => {
   const token = req.cookies.accessToken; // Attempt to get token from cookie
 
   if (!token) {
@@ -248,12 +303,12 @@ export const getCurrentUser = (req, res) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // Return basic user info from the token payload
+    const user = await User.findById(decoded.id).select('_id name email phone role');
+    if (!user) {
+      return res.status(200).json({ user: null, message: 'User not found.' });
+    }
     res.json({
-      user: {
-        _id: decoded.id,
-        role: decoded.role,
-      },
+      user: serializeUser(user),
       message: 'User data retrieved from token.'
     });
   } catch (error) {

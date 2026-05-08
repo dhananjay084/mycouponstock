@@ -2,13 +2,21 @@
 import jwt from 'jsonwebtoken';
 import User from '../Models/userModal.js'; // Assuming your User model path
 
-export const protect = async (req, res, next) => {
-  let token;
-
-  // Check if access token cookie exists
-  if (req.cookies.accessToken) {
-    token = req.cookies.accessToken;
+const getAccessToken = (req) => {
+  if (req.cookies?.accessToken) {
+    return req.cookies.accessToken;
   }
+
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+    return authHeader.slice(7).trim();
+  }
+
+  return null;
+};
+
+export const protect = async (req, res, next) => {
+  const token = getAccessToken(req);
 
   if (!token) {
     return res.status(401).json({ message: 'Not authorized, no token' });
@@ -20,6 +28,9 @@ export const protect = async (req, res, next) => {
 
     // Attach user to the request (without password)
     req.user = await User.findById(decoded.id).select('-password');
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authorized, user not found' });
+    }
     next(); // Proceed to the next middleware or route handler
   } catch (error) {
     console.error('Token verification error:', error);
@@ -39,4 +50,6 @@ export const authorizeRoles = (...roles) => {
     }
     next();
   };
-};  
+};
+
+export const requireAdmin = [protect, authorizeRoles('admin')];
