@@ -8,6 +8,12 @@ const subscriberSchema = new mongoose.Schema({
     lowercase: true,
     trim: true,
   },
+  status: {
+    type: String,
+    enum: ["subscribed", "unsubscribed"],
+    default: "subscribed",
+    trim: true,
+  },
 }, { timestamps: true });
 
 export default mongoose.model("Subscriber", subscriberSchema);

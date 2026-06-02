@@ -70,10 +70,40 @@ const getDisplayNameFromEmail = (email = "") => {
   return titleCaseWords(localPart) || "there";
 };
 
+const sanitizeBaseUrl = (value = "") => String(value || "").trim().replace(/\/$/, "");
+
+const isPublicHttpUrl = (value = "") => {
+  try {
+    const url = new URL(value);
+    const hostname = String(url.hostname || "").toLowerCase();
+    if (!["http:", "https:"].includes(url.protocol)) return false;
+    return hostname !== "localhost" && hostname !== "127.0.0.1";
+  } catch {
+    return false;
+  }
+};
+
+const getRequestBaseUrl = (req) => {
+  const forwardedProto = String(req.get("x-forwarded-proto") || req.protocol || "https")
+    .split(",")[0]
+    .trim();
+  const protocol = forwardedProto || "https";
+  return `${protocol}://${req.get("host")}`;
+};
+
 const getBaseServerUrl = (req) => {
-  const configured = process.env.SERVER_URL || process.env.NEXT_PUBLIC_SERVER_URL;
-  if (configured) return String(configured).replace(/\/$/, "");
-  return `${req.protocol}://${req.get("host")}`;
+  const siteUrl = sanitizeBaseUrl(process.env.NEXT_PUBLIC_SITE_URL);
+  if (isPublicHttpUrl(siteUrl)) return siteUrl;
+
+  const requestBase = sanitizeBaseUrl(getRequestBaseUrl(req));
+  if (isPublicHttpUrl(requestBase)) return requestBase;
+
+  const configuredServerUrl = sanitizeBaseUrl(
+    process.env.SERVER_URL || process.env.NEXT_PUBLIC_SERVER_URL
+  );
+  if (configuredServerUrl) return configuredServerUrl;
+
+  return requestBase;
 };
 
 const buildUnsubscribeToken = (email) =>
@@ -263,12 +293,13 @@ export const subscribeUser = async (req, res) => {
 
     // 2. Check if already subscribed
     const existing = await Subscriber.findOne({ email });
-    if (existing) {
+    if (existing?.status === "subscribed") {
       return res.status(400).json({ message: "Already Subscribed" });
     }
 
-    // 3. Save subscriber
-    const subscriber = new Subscriber({ email });
+    // 3. Save subscriber or restore an unsubscribed record
+    const subscriber = existing || new Subscriber({ email });
+    subscriber.status = "subscribed";
     await subscriber.save();
 
     // 4. Send confirmation email
@@ -295,7 +326,12 @@ export const subscribeUser = async (req, res) => {
         await transporter.sendMail(mailOptions);
         emailSent = true;
       } catch (mailErr) {
-        await Subscriber.deleteOne({ _id: subscriber._id }).catch(() => {});
+        if (existing) {
+          subscriber.status = "unsubscribed";
+          await subscriber.save().catch(() => {});
+        } else {
+          await Subscriber.deleteOne({ _id: subscriber._id }).catch(() => {});
+        }
         console.error("Subscription Email Error:", mailErr?.message || mailErr);
         return res.status(502).json({
           message: "Subscription email could not be sent. Please try again.",
@@ -363,13 +399,16 @@ export const unsubscribeUser = async (req, res) => {
       });
     }
 
-    const deleted = await Subscriber.findOneAndDelete({ email });
-    if (!deleted) {
+    const subscriber = await Subscriber.findOne({ email });
+    if (!subscriber || subscriber.status === "unsubscribed") {
       return respond(200, {
         title: "Already unsubscribed",
         message: "This email address is already unsubscribed from MyCouponStock newsletter updates.",
       });
     }
+
+    subscriber.status = "unsubscribed";
+    await subscriber.save();
 
     return respond(200, {
       title: "Unsubscribed successfully",
