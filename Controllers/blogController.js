@@ -16,7 +16,26 @@ export const createBlog = async (req, res) => {
 // READ ALL
 export const getAllBlogs = async (req, res) => {
   try {
-    const blogs = await Blog.find().lean();
+    const { limit, excludeId, featuredPost, showOnHome } = req.query;
+    const query = {};
+
+    if (excludeId) {
+      query._id = { $ne: excludeId };
+    }
+    if (featuredPost === "true" || featuredPost === "false") {
+      query.featuredPost = featuredPost === "true";
+    }
+    if (showOnHome === "true" || showOnHome === "false") {
+      query.showOnHome = showOnHome === "true";
+    }
+
+    let request = Blog.find(query).sort({ updatedAt: -1, createdAt: -1 });
+    const parsedLimit = Number.parseInt(limit, 10);
+    if (Number.isFinite(parsedLimit) && parsedLimit > 0) {
+      request = request.limit(parsedLimit);
+    }
+
+    const blogs = await request.lean();
     res.json(blogs);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -59,7 +78,7 @@ export const getBlogById = async (req, res) => {
   }
 
   try {
-    const blog = await Blog.findById(req.params.id);
+    const blog = await Blog.findById(req.params.id).lean();
     if (!blog) return res.status(404).json({ error: "Blog not found" });
     res.json(blog);
   } catch (err) {

@@ -3,6 +3,45 @@ import User from '../Models/userModal.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto'; // For hashing refresh tokens
 
+const getAllowedGoogleAudiences = () =>
+  [
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_OAUTH_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_IDS,
+  ]
+    .filter(Boolean)
+    .flatMap((value) => String(value).split(','))
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+const verifyGoogleCredential = async (credential) => {
+  const token = String(credential || '').trim();
+  if (!token) {
+    throw new Error('Missing Google credential.');
+  }
+
+  const tokenInfoUrl = new URL('https://oauth2.googleapis.com/tokeninfo');
+  tokenInfoUrl.searchParams.set('id_token', token);
+
+  const response = await fetch(tokenInfoUrl);
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload?.error_description || payload?.error || 'Google token verification failed.');
+  }
+
+  const audiences = getAllowedGoogleAudiences();
+  if (audiences.length > 0 && !audiences.includes(String(payload?.aud || '').trim())) {
+    throw new Error('Google token audience did not match the configured client ID.');
+  }
+
+  if (String(payload?.iss || '').trim() && !['accounts.google.com', 'https://accounts.google.com'].includes(String(payload.iss).trim())) {
+    throw new Error('Invalid Google token issuer.');
+  }
+
+  return payload;
+};
+
 // Function to generate an Access Token (short-lived)
 const generateAccessToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, {
@@ -43,7 +82,10 @@ const serializeUser = (user) => ({
   name: user.name,
   email: user.email,
   phone: user.phone,
+  avatar: user.avatar,
   role: user.role,
+  authProvider: user.authProvider,
+  socialProvider: user.socialProvider,
 });
 
 // @desc    Register a new user
@@ -129,6 +171,7 @@ export const login = async (req, res) => {
 // @access  Public
 export const socialLogin = async (req, res) => {
   const {
+    credential,
     provider,
     email,
     name,
@@ -149,40 +192,66 @@ export const socialLogin = async (req, res) => {
   }
 
   try {
+    let verifiedProfile = null;
+
+    if (normalizedProvider === 'google') {
+      verifiedProfile = await verifyGoogleCredential(credential);
+    }
+
+    const verifiedEmail = String(verifiedProfile?.email || normalizedEmail).trim().toLowerCase();
+    const verifiedProviderUserId = String(verifiedProfile?.sub || normalizedProviderUserId).trim();
+    const verifiedName = String(
+      verifiedProfile?.name ||
+      verifiedProfile?.given_name ||
+      name ||
+      'Social User'
+    ).trim();
+    const verifiedAvatar = String(verifiedProfile?.picture || avatar || '').trim();
+    const isVerifiedEmail =
+      verifiedProfile?.email_verified === 'true' ||
+      verifiedProfile?.email_verified === true ||
+      emailVerified === true;
+
+    if (!verifiedEmail || !verifiedProviderUserId) {
+      return res.status(400).json({ message: 'Unable to verify Google account details.' });
+    }
+
+    if (!isVerifiedEmail) {
+      return res.status(400).json({ message: 'Provider email is not verified.' });
+    }
+
     let user = await User.findOne({
-      email: normalizedEmail,
+      email: verifiedEmail,
     });
 
     if (!user) {
       user = await User.create({
         authProvider: 'social',
         socialProvider: normalizedProvider,
-        socialProviderId: normalizedProviderUserId,
-        email: normalizedEmail,
-        name: String(name || 'Social User').trim(),
-        avatar: avatar ? String(avatar).trim() : '',
+        socialProviderId: verifiedProviderUserId,
+        email: verifiedEmail,
+        name: verifiedName,
+        avatar: verifiedAvatar,
         role: 'user',
       });
     } else {
       let hasChanges = false;
-      if (user.authProvider !== 'social') {
-        user.authProvider = 'social';
-        hasChanges = true;
-      }
-      if (!user.socialProvider) {
+
+      // Keep existing local accounts usable with password login.
+      if (user.authProvider === 'social' && !user.socialProvider) {
         user.socialProvider = normalizedProvider;
         hasChanges = true;
       }
-      if (!user.socialProviderId) {
-        user.socialProviderId = normalizedProviderUserId;
+      if (user.authProvider === 'social' && !user.socialProviderId) {
+        user.socialProviderId = verifiedProviderUserId;
         hasChanges = true;
       }
-      if (!user.name && name) {
-        user.name = String(name).trim();
+      if (!user.name && verifiedName) {
+        user.name = verifiedName;
         hasChanges = true;
       }
-      if (!user.avatar && avatar) {
-        user.avatar = String(avatar).trim();
+      if (!user.avatar && verifiedAvatar) {
+        user.avatar = verifiedAvatar;
         hasChanges = true;
       }
       if (hasChanges) {
@@ -299,7 +368,7 @@ export const getCurrentUser = async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('_id name email phone role');
+    const user = await User.findById(decoded.id).select('_id name email phone avatar role authProvider socialProvider');
     if (!user) {
       return res.status(200).json({ user: null, message: 'User not found.' });
     }
@@ -312,5 +381,84 @@ export const getCurrentUser = async (req, res) => {
     res.status(200).json({ user: null, message: 'Invalid or expired access token.' });
   }
 };
+
+// @desc    Update current user profile
+// @route   PUT /api/auth/profile
+// @access  Private
+export const updateProfile = async (req, res) => {
+  const { name, phone, avatar } = req.body || {};
+
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const normalizedName = typeof name === 'string' ? name.trim() : user.name;
+    const normalizedPhone = typeof phone === 'string' ? phone.trim() : user.phone;
+    const normalizedAvatar = typeof avatar === 'string' ? avatar.trim() : user.avatar;
+
+    if (!normalizedName) {
+      return res.status(400).json({ message: 'Name is required.' });
+    }
+
+    user.name = normalizedName;
+    user.phone = normalizedPhone;
+    user.avatar = normalizedAvatar;
+    await user.save({ validateBeforeSave: false });
+
+    return res.status(200).json({
+      user: serializeUser(user),
+      message: 'Profile updated successfully.',
+    });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    return res.status(500).json({ message: 'Server error while updating profile.' });
+  }
+};
+
+// @desc    Update current user password
+// @route   PUT /api/auth/password
+// @access  Private
+export const updatePassword = async (req, res) => {
+  const { currentPassword, newPassword, confirmPassword } = req.body || {};
+
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    if (user.authProvider !== 'local') {
+      return res.status(400).json({ message: 'Password updates are only available for normal signup accounts.' });
+    }
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ message: 'Please enter all password fields.' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters long.' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: 'New password and confirm password do not match.' });
+    }
+
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Current password is incorrect.' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    return res.status(200).json({ message: 'Password updated successfully.' });
+  } catch (error) {
+    console.error('Password update error:', error);
+    return res.status(500).json({ message: 'Server error while updating password.' });
+  }
+};
+
 export { generateAndStoreRefreshToken };
 export {setAuthCookies};

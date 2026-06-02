@@ -1,6 +1,7 @@
 // backend/routes/authRoutes.js
 import express from 'express';
 import * as authController from '../Controllers/authController.js'; // Import all exports from authController
+import { protect } from '../middleware/authmiddleware.js';
 
 const router = express.Router();
 
@@ -35,6 +36,16 @@ router.post('/logout', authController.logout);
 // This route will now attempt to read the token and decode it, but won't enforce validity.
 // The frontend is responsible for interpreting the response and managing authentication state.
 router.get('/current_user', authController.getCurrentUser);
+
+// @route   PUT /api/auth/profile
+// @desc    Update current user profile
+// @access  Private
+router.put('/profile', protect, authController.updateProfile);
+
+// @route   PUT /api/auth/password
+// @desc    Update current user password
+// @access  Private
+router.put('/password', protect, authController.updatePassword);
 
 // Removed: /api/admin/dashboard and /api/admin/login-specific routes
 // As per your request, routes implying backend authentication/authorization are removed from here.

@@ -2,6 +2,8 @@ import Deal from '../Models/dealModel.js';
 import slugify from 'slugify';
 import { sharedCache } from "../utils/simpleCache.js";
 
+const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const buildCountryQuery = (country, countries) => {
   if (country) return { country };
   if (countries) {
@@ -14,11 +16,59 @@ const buildCountryQuery = (country, countries) => {
   return {};
 };
 
+const parseBooleanQuery = (value) => {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true") return true;
+  if (normalized === "false") return false;
+  return undefined;
+};
+
 export async function getDeals(req, res) {
   try {
-    const { country, countries } = req.query;
+    const {
+      country,
+      countries,
+      store,
+      categorySelect,
+      dealCategory,
+      dealType,
+      showOnHomepage,
+      excludeId,
+      limit,
+    } = req.query;
     const query = buildCountryQuery(country, countries);
-    const deals = await Deal.find(query).lean();
+
+    if (store) {
+      const normalizedStore = String(store).trim();
+      query.store = new RegExp(`^${escapeRegex(normalizedStore)}$`, "i");
+    }
+    if (categorySelect) {
+      query.categorySelect = String(categorySelect).trim();
+    }
+    if (dealCategory) {
+      query.dealCategory = String(dealCategory).trim();
+    }
+    if (dealType) {
+      query.dealType = String(dealType).trim();
+    }
+
+    const showOnHomepageValue = parseBooleanQuery(showOnHomepage);
+    if (typeof showOnHomepageValue === "boolean") {
+      query.showOnHomepage = showOnHomepageValue;
+    }
+
+    if (excludeId) {
+      query._id = { $ne: excludeId };
+    }
+
+    let request = Deal.find(query).sort({ updatedAt: -1, createdAt: -1 });
+    const parsedLimit = Number.parseInt(limit, 10);
+    if (Number.isFinite(parsedLimit) && parsedLimit > 0) {
+      request = request.limit(parsedLimit);
+    }
+
+    const deals = await request.lean();
     res.json(deals);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -314,7 +364,7 @@ export async function updateDeal(req, res) {
 }
 export async function getDealBySlug(req, res) {
   try {
-    const deal = await Deal.findOne({ slug: req.params.slug });
+    const deal = await Deal.findOne({ slug: req.params.slug }).lean();
     if (!deal) return res.status(404).json({ message: 'Deal not found' });
     res.json(deal);
   } catch (err) {

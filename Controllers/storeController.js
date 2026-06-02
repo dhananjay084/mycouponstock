@@ -16,11 +16,40 @@ const buildCountryQuery = (country, countries) => {
   return {};
 };
 
+const parseBooleanQuery = (value) => {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true") return true;
+  if (normalized === "false") return false;
+  return undefined;
+};
+
 export async function getStores(req, res) {
   try {
-    const { country, countries } = req.query;
+    const { country, countries, popularStore, storeType, showOnHomepage, limit } = req.query;
     const query = buildCountryQuery(country, countries);
-    const stores = await Store.find(query).lean();
+
+    if (storeType) {
+      query.storeType = String(storeType).trim();
+    }
+
+    const popularStoreValue = parseBooleanQuery(popularStore);
+    if (typeof popularStoreValue === "boolean") {
+      query.popularStore = popularStoreValue;
+    }
+
+    const showOnHomepageValue = parseBooleanQuery(showOnHomepage);
+    if (typeof showOnHomepageValue === "boolean") {
+      query.showOnHomepage = showOnHomepageValue;
+    }
+
+    let request = Store.find(query).sort({ updatedAt: -1, createdAt: -1 });
+    const parsedLimit = Number.parseInt(limit, 10);
+    if (Number.isFinite(parsedLimit) && parsedLimit > 0) {
+      request = request.limit(parsedLimit);
+    }
+
+    const stores = await request.lean();
     res.json(stores);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -248,7 +277,7 @@ export async function getStoreById(req, res) {
   }
   export async function getStoreBySlug(req, res) {
     try {
-      const store = await Store.findOne({ slug: req.params.slug });
+      const store = await Store.findOne({ slug: req.params.slug }).lean();
   
       if (!store) {
         return res.status(404).json({ message: 'Store not found' });

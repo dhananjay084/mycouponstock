@@ -1,5 +1,7 @@
 import Contact from "../Models/contact.js";
 
+const CONTACT_STATUSES = ["New", "Contacted", "Invalid Details"];
+
 export const createContact = async (req, res) => {
     try {
       const { firstName, lastName, email, phone, subject, message } = req.body;
@@ -49,6 +51,40 @@ export const getAllContacts = async (req, res) => {
     return res.status(500).json({
       success: false,
       error: "Server error",
+    });
+  }
+};
+
+export const updateContactStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    if (!CONTACT_STATUSES.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: `status must be one of: '${CONTACT_STATUSES.join("', '")}'`,
+      });
+    }
+
+    const contact = await Contact.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true, runValidators: true }
+    );
+
+    if (!contact) {
+      return res.status(404).json({
+        success: false,
+        error: "Contact not found",
+      });
+    }
+
+    return res.json({ success: true, data: contact });
+  } catch (err) {
+    console.error("updateContactStatus error:", err);
+    return res.status(500).json({
+      success: false,
+      error: err.message || "Server error",
     });
   }
 };

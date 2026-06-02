@@ -13,10 +13,22 @@ app.set("trust proxy", 1); // Enable secure cookies behind proxy (like on Vercel
 // Body parsing (keep limits sane to avoid memory spikes on large payloads)
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || "1mb" }));
 
+const allowedOrigins = String(
+  process.env.CLIENT_URL || 'http://localhost:3000,http://127.0.0.1:3000'
+)
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 // CORS
 app.use(cors({
-  origin: process.env.CLIENT_URL, // e.g., https://mycouponstock.com
-  credentials: true,              // Allow cookies to be sent
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS origin not allowed'));
+  },
+  credentials: true,
 }));
 
 // Middleware

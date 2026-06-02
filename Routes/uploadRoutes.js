@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { requireAdmin } from '../middleware/authmiddleware.js';
+import { protect } from '../middleware/authmiddleware.js';
 
 const router = express.Router();
 
@@ -50,7 +50,7 @@ const upload = multer({
 
 router.post(
   '/',
-  requireAdmin,
+  protect,
   upload.single('image'),
   (req, res) => {
     if (!req.file) {

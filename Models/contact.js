@@ -9,6 +9,12 @@ const contactSchema = new mongoose.Schema(
     phone: { type: String, trim: true },
     subject: { type: String, trim: true },
     message: { type: String, trim: true, required: true },
+    status: {
+      type: String,
+      enum: ["New", "Contacted", "Invalid Details"],
+      default: "New",
+      trim: true,
+    },
   },
   {
     timestamps: true,
