@@ -311,6 +311,23 @@ export const subscribeUser = async (req, res) => {
     if (mailConfigured) {
       try {
         const unsubscribeUrl = buildUnsubscribeUrl(req, email);
+        console.log("Newsletter mail debug:", {
+          mailService: process.env.MAIL_SERVICE || "Gmail",
+          mailUser:
+            process.env.MAIL_USER ||
+            process.env.SMTP_USER ||
+            process.env.SMTP_EMAIL ||
+            "",
+          hasMailPass: Boolean(
+            process.env.MAIL_PASS ||
+            process.env.SMTP_PASS ||
+            process.env.SMTP_PASSWORD
+          ),
+          smtpHost: process.env.SMTP_HOST || "",
+          smtpPort: process.env.SMTP_PORT || "",
+          smtpSecure: process.env.SMTP_SECURE || "",
+          fromAddress,
+        });
         const mailOptions = {
           from: fromAddress,
           to: email,
