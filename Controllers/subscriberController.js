@@ -4,8 +4,8 @@ import jwt from "jsonwebtoken";
 
 const getTransporter = () => {
   const service = process.env.MAIL_SERVICE || "Gmail";
-  const user = process.env.MAIL_USER || "";
-  const pass = process.env.MAIL_PASS || "";
+  const user = process.env.MAIL_USER || process.env.SMTP_EMAIL || "";
+  const pass = process.env.MAIL_PASS || process.env.SMTP_PASSWORD || "";
 
   if (user && pass) {
     return nodemailer.createTransport({
@@ -16,8 +16,8 @@ const getTransporter = () => {
 
   const host = process.env.SMTP_HOST || "";
   const port = Number(process.env.SMTP_PORT || 587);
-  const smtpUser = process.env.SMTP_USER || "";
-  const smtpPass = process.env.SMTP_PASS || "";
+  const smtpUser = process.env.SMTP_USER || process.env.SMTP_EMAIL || "";
+  const smtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || "";
   const secure = String(process.env.SMTP_SECURE || "").toLowerCase() === "true";
 
   if (host && smtpUser && smtpPass) {
@@ -30,6 +30,19 @@ const getTransporter = () => {
   }
 
   return null;
+};
+
+const buildFromAddress = () => {
+  const explicitFrom = String(process.env.MAIL_FROM || "").trim();
+  if (explicitFrom) return explicitFrom;
+
+  const senderEmail =
+    process.env.MAIL_USER ||
+    process.env.SMTP_USER ||
+    process.env.SMTP_EMAIL ||
+    "";
+
+  return senderEmail ? `"MyCouponStock" <${senderEmail}>` : "";
 };
 
 const normalizeEmail = (value = "") => String(value || "").trim().toLowerCase();
@@ -259,30 +272,36 @@ export const subscribeUser = async (req, res) => {
     await subscriber.save();
 
     // 4. Send confirmation email
-    const fromAddress =
-      process.env.MAIL_FROM || process.env.MAIL_USER || process.env.SMTP_USER || "";
+    const fromAddress = buildFromAddress();
     const transporter = getTransporter();
 
     let emailSent = false;
     const mailConfigured = Boolean(transporter && fromAddress);
     if (mailConfigured) {
-      const unsubscribeUrl = buildUnsubscribeUrl(req, email);
-      const mailOptions = {
-        from: fromAddress,
-        to: email,
-        subject: "Welcome to MyCouponStock!",
-        html: buildSubscriptionEmailHtml({ email, unsubscribeUrl }),
-        text: buildSubscriptionEmailText({ email, unsubscribeUrl }),
-        headers: {
-          "List-Unsubscribe": `<${unsubscribeUrl}>`,
-          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-        },
-      };
       try {
+        const unsubscribeUrl = buildUnsubscribeUrl(req, email);
+        const mailOptions = {
+          from: fromAddress,
+          to: email,
+          subject: "Welcome to MyCouponStock!",
+          html: buildSubscriptionEmailHtml({ email, unsubscribeUrl }),
+          text: buildSubscriptionEmailText({ email, unsubscribeUrl }),
+          headers: {
+            "List-Unsubscribe": `<${unsubscribeUrl}>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          },
+        };
+
         await transporter.sendMail(mailOptions);
         emailSent = true;
       } catch (mailErr) {
+        await Subscriber.deleteOne({ _id: subscriber._id }).catch(() => {});
         console.error("Subscription Email Error:", mailErr?.message || mailErr);
+        return res.status(502).json({
+          message: "Subscription email could not be sent. Please try again.",
+          emailSent: false,
+          mailConfigured: true,
+        });
       }
     }
 

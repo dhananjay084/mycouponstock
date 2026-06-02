@@ -94,7 +94,7 @@ export async function getDealSitemap(req, res) {
     requested = Math.min(requested, maxLimit);
 
     const deals = await Deal.find(query)
-      .select("slug updatedAt createdAt")
+      .select("slug country updatedAt createdAt")
       .limit(requested)
       .lean();
 

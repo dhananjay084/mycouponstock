@@ -75,7 +75,7 @@ export async function getStoreSitemap(req, res) {
     requested = Math.min(requested, maxLimit);
 
     const stores = await Store.find(query)
-      .select("slug updatedAt createdAt")
+      .select("slug country updatedAt createdAt")
       .limit(requested)
       .lean();
 
