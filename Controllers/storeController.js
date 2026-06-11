@@ -26,7 +26,7 @@ const parseBooleanQuery = (value) => {
 
 export async function getStores(req, res) {
   try {
-    const { country, countries, popularStore, storeType, showOnHomepage, limit } = req.query;
+    const { country, countries, popularStore, storeType, showOnHomepage, limit, countOnly } = req.query;
     const query = buildCountryQuery(country, countries);
 
     if (storeType) {
@@ -41,6 +41,12 @@ export async function getStores(req, res) {
     const showOnHomepageValue = parseBooleanQuery(showOnHomepage);
     if (typeof showOnHomepageValue === "boolean") {
       query.showOnHomepage = showOnHomepageValue;
+    }
+
+    const countOnlyValue = parseBooleanQuery(countOnly);
+    if (countOnlyValue === true) {
+      const count = await Store.countDocuments(query);
+      return res.json({ count });
     }
 
     let request = Store.find(query).sort({ updatedAt: -1, createdAt: -1 });

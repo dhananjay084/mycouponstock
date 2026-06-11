@@ -36,6 +36,7 @@ export async function getDeals(req, res) {
       showOnHomepage,
       excludeId,
       limit,
+      countOnly,
     } = req.query;
     const query = buildCountryQuery(country, countries);
 
@@ -60,6 +61,12 @@ export async function getDeals(req, res) {
 
     if (excludeId) {
       query._id = { $ne: excludeId };
+    }
+
+    const countOnlyValue = parseBooleanQuery(countOnly);
+    if (countOnlyValue === true) {
+      const count = await Deal.countDocuments(query);
+      return res.json({ count });
     }
 
     let request = Deal.find(query).sort({ updatedAt: -1, createdAt: -1 });
