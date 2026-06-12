@@ -27,6 +27,14 @@ const categorySchema = new Schema({
     type: String,
     default: "",
   },
+  pageHeading: {
+    type: String,
+    default: "",
+  },
+  pageDescription: {
+    type: String,
+    default: "",
+  },
   showOnHomepage: {
     type: Boolean,
     default: false,

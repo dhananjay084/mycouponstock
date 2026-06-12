@@ -55,7 +55,7 @@ export const getCategoryByName = async (req, res) => {
 export const createCategory = async (req, res) => {
   const { name, image, popularStore, showOnHomepage, metaTitle,
     metaDescription,
-    metaKeywords } = req.body;
+    metaKeywords, pageHeading, pageDescription } = req.body;
 
   if (!name || !image) {
     return res.status(400).json({ message: 'Name and image are required' });
@@ -64,7 +64,10 @@ export const createCategory = async (req, res) => {
   try {
     const newCategory = new Category({ name, image, popularStore, showOnHomepage,  metaTitle,
       metaDescription,
-      metaKeywords });
+      metaKeywords,
+      pageHeading,
+      pageDescription,
+    });
     const saved = await newCategory.save();
     res.status(201).json(saved);
   } catch (err) {
