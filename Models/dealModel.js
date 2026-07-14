@@ -110,7 +110,7 @@ const dealSchema = new Schema({
   },
   country: {
     type: [String], // can store multiple countries
-    required: true,
+    default: [],
   },
   redirectionLink: { type: String, required: true } 
 
@@ -119,7 +119,5 @@ const dealSchema = new Schema({
 {
   timestamps: true
 });
-
-dealSchema.index({ country: 1 });
 
 export default model('Deal', dealSchema);

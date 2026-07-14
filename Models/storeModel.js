@@ -60,7 +60,7 @@ const storeSchema = new Schema({
   },
   country: {
     type: [String],
-    required: true,
+    default: [],
   },
 }, {
   timestamps: true,
@@ -76,7 +76,5 @@ storeSchema.pre('validate', function (next) {
   }
   next();
 });
-
-storeSchema.index({ country: 1 });
 
 export default model('Store', storeSchema);

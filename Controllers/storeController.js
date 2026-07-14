@@ -4,17 +4,7 @@ import { sharedCache } from "../utils/simpleCache.js";
 
 const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const buildCountryQuery = (country, countries) => {
-  if (country) return { country };
-  if (countries) {
-    const list = String(countries)
-      .split(',')
-      .map((c) => c.trim())
-      .filter(Boolean);
-    if (list.length > 0) return { country: { $in: list } };
-  }
-  return {};
-};
+const buildCountryQuery = () => ({});
 
 const parseBooleanQuery = (value) => {
   if (typeof value !== "string") return undefined;
@@ -26,8 +16,8 @@ const parseBooleanQuery = (value) => {
 
 export async function getStores(req, res) {
   try {
-    const { country, countries, popularStore, storeType, showOnHomepage, limit, countOnly } = req.query;
-    const query = buildCountryQuery(country, countries);
+    const { popularStore, storeType, showOnHomepage, limit, countOnly } = req.query;
+    const query = buildCountryQuery();
 
     if (storeType) {
       query.storeType = String(storeType).trim();
@@ -64,8 +54,8 @@ export async function getStores(req, res) {
 
 export async function getStoreSitemap(req, res) {
   try {
-    const { country, countries, limit } = req.query;
-    const query = buildCountryQuery(country, countries);
+    const { limit } = req.query;
+    const query = buildCountryQuery();
 
     const cacheTtlMs = Number.parseInt(process.env.SITEMAP_CACHE_MS || "3600000", 10);
     const cacheKey = `sitemap:stores:${JSON.stringify({ query, limit: limit || "" })}`;
@@ -104,13 +94,12 @@ export async function createStore(req, res) {
     discountPercentage,
     popularStore,
     storeHtmlContent,
-    country,
     metaTitle,
 metaDescription,
 metaKeywords,
   } = req.body;
 
-  if (!storeName || !storeDescription || !storeImage || !homePageTitle || !storeType || discountPercentage === undefined || !country) {
+  if (!storeName || !storeDescription || !storeImage || !homePageTitle || !storeType || discountPercentage === undefined) {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
@@ -136,7 +125,7 @@ metaKeywords,
       discountPercentage,
       popularStore,
       storeHtmlContent,
-      country,
+      country: Array.isArray(req.body.country) ? req.body.country.filter(Boolean) : [],
       metaTitle,
 metaDescription,
 metaKeywords,
@@ -207,8 +196,6 @@ export async function getStoreById(req, res) {
   
   export async function searchStores(req, res) {
     const searchTerm = String(req.query.q || "").trim();
-    const { country, countries } = req.query;
-  
     if (!searchTerm) {
       return res.status(400).json({ message: 'Search term  is required' });
     }
@@ -218,14 +205,6 @@ export async function getStoreById(req, res) {
       const terms = normalized.split(" ").map((term) => term.trim()).filter(Boolean);
       const phraseRegex = new RegExp(escapeRegex(normalized), "i");
       const startsWithRegex = new RegExp("^" + escapeRegex(normalized), "i");
-
-      let countryFilter = {};
-      if (country) {
-        countryFilter = { country };
-      } else if (countries) {
-        const list = countries.split(',').map((c) => c.trim()).filter(Boolean);
-        if (list.length > 0) countryFilter = { country: { $in: list } };
-      }
 
       const tokenConditions = terms.flatMap((term) => {
         const tokenRegex = new RegExp(escapeRegex(term), "i");
@@ -237,7 +216,6 @@ export async function getStoreById(req, res) {
       });
 
       const candidates = await Store.find({
-        ...countryFilter,
         $or: [{ storeName: phraseRegex }, ...tokenConditions],
       })
         .limit(80)

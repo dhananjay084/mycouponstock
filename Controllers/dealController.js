@@ -4,17 +4,7 @@ import { sharedCache } from "../utils/simpleCache.js";
 
 const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const buildCountryQuery = (country, countries) => {
-  if (country) return { country };
-  if (countries) {
-    const list = String(countries)
-      .split(',')
-      .map((c) => c.trim())
-      .filter(Boolean);
-    if (list.length > 0) return { country: { $in: list } };
-  }
-  return {};
-};
+const buildCountryQuery = () => ({});
 
 const parseBooleanQuery = (value) => {
   if (typeof value !== "string") return undefined;
@@ -27,8 +17,6 @@ const parseBooleanQuery = (value) => {
 export async function getDeals(req, res) {
   try {
     const {
-      country,
-      countries,
       store,
       categorySelect,
       dealCategory,
@@ -38,7 +26,7 @@ export async function getDeals(req, res) {
       limit,
       countOnly,
     } = req.query;
-    const query = buildCountryQuery(country, countries);
+    const query = buildCountryQuery();
 
     if (store) {
       const normalizedStore = String(store).trim();
@@ -84,8 +72,8 @@ export async function getDeals(req, res) {
 
 export async function getDealSitemap(req, res) {
   try {
-    const { country, countries, limit } = req.query;
-    const query = buildCountryQuery(country, countries);
+    const { limit } = req.query;
+    const query = buildCountryQuery();
 
     const cacheTtlMs = Number.parseInt(process.env.SITEMAP_CACHE_MS || "3600000", 10);
     const cacheKey = `sitemap:deals:${JSON.stringify({ query, limit: limit || "" })}`;
@@ -167,12 +155,10 @@ const validateDealPayload = (payload = {}) => {
     store,
     expiredDate,
     redirectionLink,
-    country,
     layoutFormat,
   } = payload;
 
   const normalizedLayout = layoutFormat === "structured" ? "structured" : "custom";
-  const normalizedCountry = normalizeCountry(country);
 
   const missingFields = [];
   const isEmpty = (val) =>
@@ -194,9 +180,8 @@ const validateDealPayload = (payload = {}) => {
   if (isEmpty(discount)) missingFields.push("discount");
   if (isEmpty(expiredDate)) missingFields.push("expiredDate");
   if (isEmpty(redirectionLink)) missingFields.push("redirectionLink");
-  if (isEmpty(normalizedCountry)) missingFields.push("country");
 
-  return { missingFields, normalizedLayout, normalizedCountry };
+  return { missingFields, normalizedLayout };
 };
 export async function createDeal(req, res) {
   const {
@@ -223,13 +208,12 @@ export async function createDeal(req, res) {
     store,
     expiredDate,
     redirectionLink,
-    country, // ✅ ADD THIS
     metaTitle,
     metaDescription,
     metaKeywords
   } = req.body;
 
-  const { missingFields, normalizedLayout, normalizedCountry } = validateDealPayload(req.body);
+  const { missingFields, normalizedLayout } = validateDealPayload(req.body);
 
   if (missingFields.length > 0) {
     return res.status(400).json({
@@ -266,7 +250,7 @@ export async function createDeal(req, res) {
       store,
       expiredDate,
       redirectionLink,
-      country: normalizedCountry, // ✅ ADD THIS WHEN SAVING
+      country: Array.isArray(req.body.country) ? req.body.country.filter(Boolean) : [],
       metaTitle,
       metaDescription,
       metaKeywords
@@ -292,7 +276,7 @@ export async function bulkCreateDeals(req, res) {
 
     for (let i = 0; i < deals.length; i++) {
       const payload = deals[i] || {};
-      const { missingFields, normalizedLayout, normalizedCountry } = validateDealPayload(payload);
+      const { missingFields, normalizedLayout } = validateDealPayload(payload);
 
       if (missingFields.length > 0) {
         errors.push({ index: i, missingFields, message: "Missing required fields" });
@@ -313,7 +297,7 @@ export async function bulkCreateDeals(req, res) {
           ...payload,
           slug: uniqueSlug,
           layoutFormat: normalizedLayout,
-          country: normalizedCountry,
+          country: Array.isArray(payload.country) ? payload.country.filter(Boolean) : [],
           showOnHomepage: payload.showOnHomepage || false,
         });
         const savedDeal = await newDeal.save();
@@ -381,8 +365,6 @@ export async function getDealBySlug(req, res) {
 
 export async function searchDeals(req, res) {
     const searchTerm = req.query.q;
-    const { country, countries } = req.query;
-  
     if (!searchTerm) {
       return res.status(400).json({ message: 'Search term (q) is required' });
     }
@@ -392,23 +374,14 @@ export async function searchDeals(req, res) {
       const startsWithRegex = new RegExp('^' + searchTerm, 'i');
       // Create case-insensitive regex for "contains"
       const containsRegex = new RegExp(searchTerm, 'i');
-      let countryFilter = {};
-      if (country) {
-        countryFilter = { country };
-      } else if (countries) {
-        const list = countries.split(',').map((c) => c.trim()).filter(Boolean);
-        if (list.length > 0) countryFilter = { country: { $in: list } };
-      }
-  
       // 1. Find deals where dealTitle starts with the searchTerm
-      const startsWithDeals = await Deal.find({ ...countryFilter, dealTitle: startsWithRegex }).lean(); // .lean() for plain JS objects
+      const startsWithDeals = await Deal.find({ dealTitle: startsWithRegex }).lean(); // .lean() for plain JS objects
   
       // Get IDs of deals found in "starts with" to exclude them from "contains" search
       const startsWithIds = startsWithDeals.map(deal => deal._id);
   
       // 2. Find deals where dealTitle contains the searchTerm, excluding those already found
       const containsDeals = await Deal.find({
-        ...countryFilter,
         dealTitle: containsRegex,
         _id: { $nin: startsWithIds } // Exclude deals already found
       }).lean();
